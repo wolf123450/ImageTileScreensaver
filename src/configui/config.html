@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Tile Screensaver Configuration</title>
+    <link rel="stylesheet" href="config.css">
+</head>
+<body>
+    <div class="config-container">
+        <div class="header-container">
+            <h1>Image Tile Screensaver Settings</h1>
+            <button id="theme-toggle" class="theme-toggle" title="Toggle dark/light mode">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.65 0-3 1.35-3 3s1.35 3 3 3 3-1.35 3-3-1.35-3-3-3zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M9.37 5.51c-.18.64-.27 1.31-.27 1.99 0 4.08 3.32 7.4 7.4 7.4.68 0 1.35-.09 1.99-.27C17.45 17.19 14.93 19 12 19c-3.86 0-7-3.14-7-7 0-2.93 1.81-5.45 4.37-6.49zM12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-button active" data-tab="general">General</button>
+            <button class="tab-button" data-tab="images">Images</button>
+            <button class="tab-button" data-tab="patterns">Patterns</button>
+            <button class="tab-button" data-tab="advanced">Advanced</button>
+        </div>
+        
+        <div class="tab-content">
+            <!-- General Settings Tab -->
+            <div id="general" class="tab-pane active">
+                <h2>General Settings</h2>
+                
+                <div class="form-group">
+                    <label for="change-interval">Image Change Interval (seconds):</label>
+                    <div class="input-with-validation">
+                        <input type="number" id="change-interval" min="1" max="3600" value="10">
+                        <span class="validation-message"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Images Tab -->
+            <div id="images" class="tab-pane">
+                <h2>Image Settings</h2>
+                
+                <div class="form-group">
+                    <label for="image-directory">Image Directory:</label>
+                    <div class="directory-selector">
+                        <input type="text" id="image-directory" readonly>
+                        <button id="browse-directory" class="browse-button">Browse...</button>
+                    </div>
+                    <div id="directory-status" class="status-message"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="include-subdirectories">
+                        Include images from subdirectories
+                    </label>
+                </div>
+                
+                <div class="image-preview">
+                    <h3>Image Preview</h3>
+                    <div id="image-count">No images found</div>
+                    <div id="preview-container"></div>
+                </div>
+            </div>
+            
+            <!-- Patterns Tab -->
+            <div id="patterns" class="tab-pane">
+                <h2>Pattern Settings</h2>
+                
+                <div class="form-group">
+                    <label>Select Pattern:</label>
+                    <div class="pattern-grid">
+                        <div class="pattern-option" data-pattern="simple">
+                            <div class="pattern-preview simple"></div>
+                            <span>Simple</span>
+                        </div>
+                        <div class="pattern-option" data-pattern="grid">
+                            <div class="pattern-preview grid"></div>
+                            <span>Grid</span>
+                        </div>
+                        <div class="pattern-option" data-pattern="mosaic">
+                            <div class="pattern-preview mosaic"></div>
+                            <span>Mosaic</span>
+                        </div>
+                        <div class="pattern-option" data-pattern="random">
+                            <div class="pattern-preview random"></div>
+                            <span>Random</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pattern-specific-options">
+                    <!-- Options will be dynamically loaded based on selected pattern -->
+                    <div id="pattern-options-container"></div>
+                </div>
+            </div>
+            
+            <!-- Advanced Tab -->
+            <div id="advanced" class="tab-pane">
+                <h2>Advanced Settings</h2>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="multi-monitor-sync">
+                        Synchronize images across multiple monitors
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="transition-effect">Transition Effect:</label>
+                    <select id="transition-effect">
+                        <option value="none">None</option>
+                        <option value="fade" selected>Fade</option>
+                        <option value="slide">Slide</option>
+                        <option value="zoom">Zoom</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="transition-duration">Transition Duration (ms):</label>
+                    <div class="input-with-validation">
+                        <input type="number" id="transition-duration" min="0" max="5000" value="1000">
+                        <span class="validation-message"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-container">
+            <button id="apply-button" class="action-button">Apply</button>
+            <button id="save-button" class="action-button primary">Save</button>
+            <button id="cancel-button" class="action-button">Cancel</button>
+        </div>
+    </div>
+    
+    <script src="config.js"></script>
+</body>
+</html>

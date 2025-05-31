@@ -8,6 +8,7 @@ A customizable screensaver application built with Electron and TypeScript that d
 - Support for various display patterns and layouts
 - Smooth transitions between images with configurable intervals
 - Proper Windows screensaver integration with command-line argument support
+- Configuration UI with tabs for general settings, image selection, patterns, and advanced options
 - Low CPU and memory footprint for efficient background operation
 - Support for various image formats (JPG, PNG, WebP, GIF, BMP)
 - Multiple monitor support with independent or synchronized displays
@@ -51,6 +52,7 @@ A customizable screensaver application built with Electron and TypeScript that d
 - `src/main.ts` - Electron main process
 - `src/preload.ts` - Preload script for secure renderer/main process communication
 - `src/renderer.ts` - Renderer process for the UI
+- `src/configui/` - Configuration UI components and logic
 
 ### Building
 
@@ -108,7 +110,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Roadmap
 
-- Configuration UI for easier setup
 - Additional pattern generators for more dynamic displays
 - Transition effects library
 - Performance optimizations for large image collections

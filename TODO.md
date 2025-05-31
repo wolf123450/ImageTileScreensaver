@@ -8,38 +8,38 @@ This document outlines features and improvements that need to be implemented or 
 - [ ] **CF-1:** Complete the implementation of the Windows screensaver preview mode (`/p` command line argument) [9/10]
 - [ ] **CF-2:** Add a configuration dialog for the Windows screensaver settings (`/c` command line argument) [10/10]
   #### Implementation Steps:
-  1. **CF-2.1:** Create Configuration UI Components:
+  1. [x] **CF-2.1:** Create Configuration UI Components:
      - Design and implement a configuration dialog using HTML/CSS/TS in a separate window
      - Create form elements for all configurable settings (image directory, change interval, patterns, etc.)
      - Add validation for user inputs (directory exists, interval is a positive number, etc.)
   
-  2. **CF-2.2:** Add Configuration Window Management:
+  2. [ ] **CF-2.2:** Add Configuration Window Management:
      - Create a new electron BrowserWindow specifically for configuration
      - Implement proper window sizing, positioning, and styling for a dialog
      - Add modal behavior to block interaction with other windows when config is open
   
-  3. **CF-2.3:** Command Line Argument Handling:
+  3. [ ] **CF-2.3:** Command Line Argument Handling:
      - Enhance the existing `/c` handler in `main.ts` to create and show the config window
      - Add proper argument parsing for any additional parameters
      - Implement Windows-specific behavior for configuration dialog integration
   
-  4. **CF-2.4:** Configuration Persistence:
+  4. [ ] **CF-2.4:** Configuration Persistence:
      - Create a configuration file format (JSON) to store user settings
      - Implement read/write functions for the configuration file
      - Add functions to apply configuration changes in real-time
   
-  5. **CF-2.5:** Configuration API:
+  5. [ ] **CF-2.5:** Configuration API:
      - Extend the IPC interface in `preload.ts` to expose configuration-related functions
      - Add methods for saving, loading, and validating configuration
      - Create event emitters for configuration changes
   
-  6. **CF-2.6:** UI/UX Refinement:
+  6. [ ] **CF-2.6:** UI/UX Refinement:
      - Add proper error handling with user-friendly messages
      - Implement "Apply", "Save", and "Cancel" buttons with appropriate behaviors
      - Create a directory browser dialog for selecting image folders
      - Add preview functionality for pattern selection
 
-  7. **CF-2.7:** Testing and Validation:
+  7. [ ] **CF-2.7:** Testing and Validation:
      - Test the configuration dialog across different Windows versions
      - Verify that settings are correctly saved and loaded
      - Ensure proper behavior when launched from Windows screensaver settings
@@ -60,53 +60,53 @@ This document outlines features and improvements that need to be implemented or 
 ### User Interface
 - [ ] **UI-1:** Build a configuration UI accessible from the screensaver settings [10/10]
   #### Implementation Steps:
-  1. **UI-1.1:** Design UI Architecture:
+  1. [x] **UI-1.1:** Design UI Architecture:
      - Create wireframes for the configuration UI with all needed components
      - Define component hierarchy and state management approach
      - Plan responsive layout to handle different screen sizes
 
-  2. **UI-1.2:** Create Base UI Framework:
+  2. [x] **UI-1.2:** Create Base UI Framework:
      - Set up HTML structure with appropriate container elements
      - Implement CSS styling with a cohesive design system
      - Add dark/light mode support for system integration
 
-  3. **UI-1.3:** Implement Core UI Components:
+  3. [x] **UI-1.3:** Implement Core UI Components:
      - Create a sidebar navigation for different setting categories
      - Build form components for all configurable options
      - Implement tabbed interface for organizing complex settings
      - Add custom UI controls for specialized settings (interval sliders, color pickers, etc.)
 
-  4. **UI-1.4:** Directory Selection Component:
+  4. [x] **UI-1.4:** Directory Selection Component:
      - Create a directory browser component to select image sources
      - Add support for multiple directories with priority settings
      - Implement directory validation and permission checking
      - Show directory statistics (number of images, types, total size)
 
-  5. **UI-1.5:** Pattern Configuration Components:
+  5. [x] **UI-1.5:** Pattern Configuration Components:
      - Create visual selectors for different pattern types
      - Build pattern-specific configuration panels
      - Implement live preview functionality for patterns
      - Create pattern parameter controls (grid size, animation speed, etc.)
 
-  6. **UI-1.6:** Multi-monitor Configuration:
+  6. [ ] **UI-1.6:** Multi-monitor Configuration:
      - Implement monitor detection and display
      - Create UI for per-monitor settings
      - Add visual representation of the user's monitor layout
      - Support dragging and dropping settings between monitors
 
-  7. **UI-1.7:** Settings Persistence Integration:
+  7. [ ] **UI-1.7:** Settings Persistence Integration:
      - Connect UI components to configuration read/write functions
      - Implement real-time validation and feedback
      - Add "reset to defaults" functionality
      - Create import/export capabilities for sharing configurations
 
-  8. **UI-1.8:** Accessibility and Usability:
+  8. [ ] **UI-1.8:** Accessibility and Usability:
      - Implement keyboard navigation throughout the UI
      - Add tooltips and help text for complex options
      - Ensure proper contrast and text sizing
      - Support screen readers and assistive technologies
 
-  9. **UI-1.9:** Testing and Refinement:
+  9. [ ] **UI-1.9:** Testing and Refinement:
      - Conduct usability testing with different user scenarios
      - Test across multiple operating systems and window managers
      - Verify that all settings correctly affect the screensaver behavior
@@ -114,7 +114,7 @@ This document outlines features and improvements that need to be implemented or 
 
 - [ ] **UI-2:** Create a standalone settings application for non-Windows platforms [6/10]
 - [ ] **UI-3:** Add visual feedback during image loading [7/10]
-- [ ] **UI-4:** Implement a preview panel in the configuration dialog [9/10]
+- [x] **UI-4:** Implement a preview panel in the configuration dialog [9/10]
 
 ## Medium Priority
 

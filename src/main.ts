@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, dialog } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
@@ -16,6 +16,7 @@ const stat = promisify(fs.stat);
 // Keep a global reference of the window objects to prevent them from being garbage collected
 let screensaverWindows: BrowserWindow[] = [];
 let config: ScreensaverConfig = defaultConfig;
+let configWindow: BrowserWindow | null = null;
 
 function createScreensaverWindows() {
   // Get all displays
@@ -127,6 +128,53 @@ ipcMain.handle('get-config', () => {
   return config;
 });
 
+// Create the configuration window
+function createConfigWindow() {
+  // Check if config window already exists
+  if (configWindow) {
+    configWindow.focus();
+    return;
+  }
+
+  configWindow = new BrowserWindow({
+    width: 850,
+    height: 700,
+    title: 'Image Tile Screensaver Configuration',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+    show: false // Don't show until ready
+  });
+
+  // Load the configuration HTML
+  // Use URL format with protocol to avoid path resolution issues
+  const configPath = url.format({
+    pathname: path.join(__dirname, 'configui', 'config.html'),
+    protocol: 'file:',
+    slashes: true
+  });
+  
+  console.log('Loading config UI from:', configPath);
+  configWindow.loadURL(configPath);
+
+  // Show window when content has loaded
+  configWindow.once('ready-to-show', () => {
+    configWindow?.show();
+  });
+
+  // Handle window close
+  configWindow.on('closed', () => {
+    configWindow = null;
+  });
+
+  // Open DevTools in development mode
+  if (process.env.NODE_ENV === 'development') {
+    configWindow.webContents.openDevTools();
+  }
+}
+
 // Handle Windows screensaver command line arguments
 function handleWindowsScreensaverArgs() {
   const args = process.argv;
@@ -138,10 +186,9 @@ function handleWindowsScreensaverArgs() {
   // /p <HWND> - Preview the screensaver in the given window
   
   if (args.includes('/c')) {
-    // Show configuration dialog (will implement later)
+    // Show configuration dialog
     console.log('Configuration mode requested');
-    // For the proof of concept, just quit
-    app.quit();
+    createConfigWindow();
     return false;
   } else if (args.includes('/p')) {
     // Preview mode (will implement later)
@@ -159,6 +206,76 @@ function handleWindowsScreensaverArgs() {
   // Default to running normally
   return true;
 }
+
+// Add IPC handlers for configuration
+ipcMain.handle('browse-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  
+  if (result.canceled) {
+    return null;
+  }
+  
+  return result.filePaths[0];
+});
+
+ipcMain.handle('validate-directory', async (_, directory) => {
+  try {
+    const stats = await fs.promises.stat(directory);
+    return stats.isDirectory();
+  } catch (error) {
+    console.error('Error validating directory:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('get-preview-images', async (_, directory, count) => {
+  try {
+    // Use the existing getImageFiles function but limit to specified count
+    const allImages = await getImageFiles(directory);
+    return allImages.slice(0, count);
+  } catch (error) {
+    console.error('Error getting preview images:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('apply-config', async (_, newConfig) => {
+  try {
+    // Apply configuration without saving to disk
+    config = { ...config, ...newConfig };
+    return true;
+  } catch (error) {
+    console.error('Error applying configuration:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-config', async (_, newConfig) => {
+  try {
+    // Update current config
+    config = { ...config, ...newConfig };
+    
+    // Save to disk - this would use the existing saveConfig function
+    // For now, we'll just log it
+    console.log('Saving configuration:', config);
+    
+    // TODO: Add actual file saving logic here
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving configuration:', error);
+    throw error;
+  }
+});
+
+ipcMain.on('close-config-window', () => {
+  if (configWindow && !configWindow.isDestroyed()) {
+    configWindow.close();
+  }
+  configWindow = null;
+});
 
 // Create window when Electron has finished initialization
 app.whenReady().then(() => {

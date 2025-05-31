@@ -1,0 +1,350 @@
+:root {
+    /* Light theme (default) */
+    --primary-color: #3a86ff;
+    --primary-hover: #2a76ef;
+    --secondary-color: #8d99ae;
+    --text-color: #2b2d42;
+    --background-color: #edf2f4;
+    --panel-color: #ffffff;
+    --border-color: #d3d3d3;
+    --success-color: #38b000;
+    --error-color: #d90429;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --preview-bg: #f9f9f9;
+    --pattern-preview-bg: #f0f0f0;
+}
+
+[data-theme="dark"] {
+    --primary-color: #4f8dff;
+    --primary-hover: #5f9dff;
+    --secondary-color: #6c757d;
+    --text-color: #e9ecef;
+    --background-color: #121212;
+    --panel-color: #1e1e1e;
+    --border-color: #444444;
+    --success-color: #4caf50;
+    --error-color: #f44336;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --input-bg: #2c2c2c;
+    --preview-bg: #2a2a2a;
+    --pattern-preview-bg: #323232;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.config-container {
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: var(--panel-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+/* Add header container styles for title and theme toggle */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Theme toggle button styles */
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.theme-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .theme-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-toggle svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--text-color);
+}
+
+/* Show/hide appropriate icon based on theme */
+.moon-icon {
+    display: none;
+}
+
+.sun-icon {
+    display: block;
+}
+
+[data-theme="dark"] .moon-icon {
+    display: block;
+}
+
+[data-theme="dark"] .sun-icon {
+    display: none;
+}
+
+h1 {
+    text-align: center;
+    color: var(--primary-color);
+    margin: 0;
+}
+
+h2 {
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--secondary-color);
+    transition: color 0.3s;
+}
+
+.tab-button:hover {
+    color: var(--primary-color);
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    font-weight: bold;
+}
+
+.tab-pane {
+    display: none;
+    padding: 15px 0;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+input[type="number"] {
+    width: 150px;
+}
+
+.directory-selector {
+    display: flex;
+    gap: 10px;
+}
+
+.directory-selector input[type="text"] {
+    flex-grow: 1;
+}
+
+.browse-button {
+    padding: 10px 15px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.browse-button:hover {
+    background-color: var(--primary-color);
+}
+
+.pattern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.pattern-option {
+    cursor: pointer;
+    text-align: center;
+    padding: 10px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    transition: border-color 0.3s;
+}
+
+.pattern-option:hover {
+    border-color: var(--secondary-color);
+}
+
+.pattern-option.selected {
+    border-color: var(--primary-color);
+    background-color: rgba(58, 134, 255, 0.1);
+}
+
+.pattern-preview {
+    height: 80px;
+    width: 100%;
+    background-color: var(--pattern-preview-bg);
+    margin-bottom: 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pattern-preview.simple {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80"><rect x="35" y="20" width="30" height="40" fill="%233a86ff"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.pattern-preview.grid {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80"><rect x="10" y="10" width="35" height="25" fill="%233a86ff"/><rect x="55" y="10" width="35" height="25" fill="%233a86ff"/><rect x="10" y="45" width="35" height="25" fill="%233a86ff"/><rect x="55" y="45" width="35" height="25" fill="%233a86ff"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.pattern-preview.mosaic {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80"><rect x="10" y="10" width="50" height="60" fill="%233a86ff"/><rect x="70" y="10" width="20" height="25" fill="%233a86ff"/><rect x="70" y="45" width="20" height="25" fill="%233a86ff"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.pattern-preview.random {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80"><rect x="15" y="20" width="25" height="30" fill="%233a86ff"/><rect x="50" y="10" width="40" height="20" fill="%233a86ff"/><rect x="60" y="40" width="25" height="35" fill="%233a86ff"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.image-preview {
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 15px;
+    background-color: var(--preview-bg);
+}
+
+#image-count {
+    margin-bottom: 10px;
+    font-style: italic;
+}
+
+#preview-container {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px 0;
+    min-height: 80px;
+}
+
+#preview-container img {
+    height: 80px;
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+}
+
+.button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.action-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.action-button:not(.primary) {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.action-button:not(.primary):hover {
+    background-color: #7d89ae;
+}
+
+.action-button.primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.action-button.primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.status-message {
+    margin-top: 5px;
+    font-size: 0.9rem;
+}
+
+.status-message.success {
+    color: var(--success-color);
+}
+
+.status-message.error {
+    color: var(--error-color);
+}
+
+.input-with-validation {
+    position: relative;
+}
+
+.validation-message {
+    position: absolute;
+    font-size: 0.85rem;
+    color: var(--error-color);
+    margin-top: 2px;
+}
