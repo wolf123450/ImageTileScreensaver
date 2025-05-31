@@ -291,6 +291,39 @@ input[type="number"] {
     box-shadow: var(--shadow);
 }
 
+/* Button container styling */
+.button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+}
+
+.action-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    background-color: var(--secondary-color);
+    color: white;
+    transition: background-color 0.3s;
+}
+
+.action-button:hover {
+    background-color: var(--primary-hover);
+}
+
+.action-button.primary {
+    background-color: var(--primary-color);
+}
+
+.action-button.success {
+    background-color: var(--success-color);
+}
+
 /* Pagination controls styling */
 .pagination-controls {
     display: flex;
@@ -331,62 +364,25 @@ input[type="number"] {
     margin-left: auto;
 }
 
-.button-container {
+/* Page size selector styling */
+.page-size-selector {
     display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 30px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
+    align-items: center;
+    gap: 5px;
+    margin-left: 15px;
 }
 
-.action-button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.action-button:not(.primary) {
-    background-color: var(--secondary-color);
-    color: white;
-}
-
-.action-button:not(.primary):hover {
-    background-color: #7d89ae;
-}
-
-.action-button.primary {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.action-button.primary:hover {
-    background-color: var(--primary-hover);
-}
-
-.status-message {
-    margin-top: 5px;
+.page-size-selector label {
     font-size: 0.9rem;
+    margin-bottom: 0;
 }
 
-.status-message.success {
-    color: var(--success-color);
-}
-
-.status-message.error {
-    color: var(--error-color);
-}
-
-.input-with-validation {
-    position: relative;
-}
-
-.validation-message {
-    position: absolute;
-    font-size: 0.85rem;
-    color: var(--error-color);
-    margin-top: 2px;
+.page-size-selector select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    width: auto;
+    font-size: 0.9rem;
 }

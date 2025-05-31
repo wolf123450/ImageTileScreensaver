@@ -35,6 +35,7 @@ let transitionDurationInput: HTMLInputElement;
 let applyButton: HTMLButtonElement;
 let saveButton: HTMLButtonElement;
 let cancelButton: HTMLButtonElement;
+let doneButton: HTMLButtonElement; // Add done button reference
 let directoryStatus: HTMLElement;
 let imageCount: HTMLElement;
 let previewContainer: HTMLElement;
@@ -42,7 +43,7 @@ let themeToggle: HTMLButtonElement; // Add theme toggle button reference
 
 // Add pagination state and image cache
 let currentImagePage = 0;
-let imagesPerPage = 5;
+let imagesPerPage = 20; // Changed default from 5 to 20
 let totalImageCount = 0;
 let cachedImageData: {
     directory: string;
@@ -85,6 +86,7 @@ function initElements(): void {
     applyButton = document.getElementById('apply-button') as HTMLButtonElement;
     saveButton = document.getElementById('save-button') as HTMLButtonElement;
     cancelButton = document.getElementById('cancel-button') as HTMLButtonElement;
+    doneButton = document.getElementById('done-button') as HTMLButtonElement; // Initialize done button
     
     directoryStatus = document.getElementById('directory-status') as HTMLElement;
     imageCount = document.getElementById('image-count') as HTMLElement;
@@ -142,6 +144,7 @@ function setupEventListeners(): void {
     applyButton.addEventListener('click', applyChanges);
     saveButton.addEventListener('click', saveChanges);
     cancelButton.addEventListener('click', closeWindow);
+    doneButton.addEventListener('click', saveAndClose); // Add done button event listener
     
     // Theme toggle
     themeToggle.addEventListener('click', toggleTheme);
@@ -359,6 +362,48 @@ function addPaginationControls(): void {
     const pageIndicator = document.createElement('span');
     pageIndicator.textContent = `Page ${currentImagePage + 1} of ${maxPage + 1}`;
     
+    // Add page size selector
+    const pageSizeContainer = document.createElement('div');
+    pageSizeContainer.className = 'page-size-selector';
+    
+    const pageSizeLabel = document.createElement('label');
+    pageSizeLabel.textContent = 'Show:';
+    pageSizeLabel.htmlFor = 'page-size-select';
+    
+    const pageSizeSelect = document.createElement('select');
+    pageSizeSelect.id = 'page-size-select';
+    
+    // Add page size options
+    [10, 20, 30, 40, 50].forEach(size => {
+        const option = document.createElement('option');
+        option.value = size.toString();
+        option.textContent = `${size} images`;
+        option.selected = size === imagesPerPage;
+        pageSizeSelect.appendChild(option);
+    });
+    
+    // Add page size change handler
+    pageSizeSelect.addEventListener('change', () => {
+        const newPageSize = parseInt(pageSizeSelect.value);
+        
+        if (newPageSize !== imagesPerPage) {
+            // Adjust the current page to preserve the first visible image as much as possible
+            const firstVisibleImage = currentImagePage * imagesPerPage;
+            
+            // Set new page size
+            imagesPerPage = newPageSize;
+            
+            // Calculate new current page
+            currentImagePage = Math.floor(firstVisibleImage / imagesPerPage);
+            
+            // Update UI
+            updateImagePreviewsUI();
+        }
+    });
+    
+    pageSizeContainer.appendChild(pageSizeLabel);
+    pageSizeContainer.appendChild(pageSizeSelect);
+    
     // Add refresh button
     const refreshButton = document.createElement('button');
     refreshButton.textContent = '↻ Refresh';
@@ -372,6 +417,7 @@ function addPaginationControls(): void {
     paginationDiv.appendChild(prevButton);
     paginationDiv.appendChild(pageIndicator);
     paginationDiv.appendChild(nextButton);
+    paginationDiv.appendChild(pageSizeContainer);
     paginationDiv.appendChild(refreshButton);
     
     // Add pagination div to the preview container
@@ -551,13 +597,35 @@ async function saveChanges(): Promise<void> {
         });
         
         showSuccessMessage('Settings saved successfully');
-        
-        // Close after a brief delay to show success message
-        setTimeout(() => {
-            closeWindow();
-        }, 1000);
     } catch (error) {
         console.error('Error saving configuration:', error);
+        showErrorMessage('Failed to save settings');
+    }
+}
+
+// Save changes and close window without showing success message
+async function saveAndClose(): Promise<void> {
+    const newConfig = getConfigFromUI();
+    
+    try {
+        // Save config directly without showing success message
+        await window.electronAPI.saveConfig({
+            imageFolder: newConfig.imageDirectory,
+            includeSubdirectories: newConfig.includeSubdirectories,
+            changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
+            pattern: newConfig.pattern,
+            multiMonitorSync: newConfig.multiMonitorSync,
+            transition: {
+                effect: newConfig.transitionEffect,
+                duration: newConfig.transitionDuration
+            },
+            theme: newConfig.theme
+        });
+        
+        // Close window immediately without showing popup
+        closeWindow();
+    } catch (error) {
+        console.error('Error saving and closing:', error);
         showErrorMessage('Failed to save settings');
     }
 }
