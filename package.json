@@ -1,0 +1,35 @@
+{
+  "name": "image-tile-screensaver",
+  "version": "1.0.0",
+  "description": "A screensaver that tiles images across multiple displays in varying patterns.",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "package": "electron-builder --win"
+  },
+  "keywords": [
+    "screensaver",
+    "electron",
+    "images",
+    "tiling",
+    "multi-display"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^25.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "homepage": "https://github.com/yourusername/image-tile-screensaver",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/image-tile-screensaver.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/image-tile-screensaver/issues"
+  }
+}
