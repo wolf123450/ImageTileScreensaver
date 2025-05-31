@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
 import { promisify } from 'util';
-import { loadConfig, defaultConfig, ScreensaverConfig } from './config';
+import { loadConfig, defaultConfig, ScreensaverConfig, saveConfig } from './config';
 import dotenv from 'dotenv';
 
 // Initialize dotenv
@@ -92,7 +92,7 @@ function closeAllScreensaverWindows() {
 }
 
 // Get all images from the configured directory
-async function getImageFiles(directory: string): Promise<string[]> {
+async function getImageFiles(directory: string): Promise<{images: string[], totalCount: number}> {
   try {
     const files = await readdir(directory);
     const imageFiles: string[] = [];
@@ -106,21 +106,28 @@ async function getImageFiles(directory: string): Promise<string[]> {
         const ext = path.extname(file).toLowerCase();
         if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'].includes(ext)) {
           imageFiles.push(filePath);
-          console.log(`Found image: ${filePath}`);
+          // console.log(`Found image: ${filePath}`);
         }
       }
     }
     
-    return imageFiles;
+    return { 
+      images: imageFiles, 
+      totalCount: imageFiles.length 
+    };
   } catch (error) {
     console.error('Error reading image directory:', error);
-    return [];
+    return { 
+      images: [], 
+      totalCount: 0 
+    };
   }
 }
 
 // Handle IPC for getting images
 ipcMain.handle('get-images', async () => {
-  return await getImageFiles(path.resolve(config.imageFolder));
+  const result = await getImageFiles(path.resolve(config.imageFolder));
+  return result.images; // Maintain backward compatibility
 });
 
 // Handle IPC for getting config
@@ -230,14 +237,23 @@ ipcMain.handle('validate-directory', async (_, directory) => {
   }
 });
 
-ipcMain.handle('get-preview-images', async (_, directory, count) => {
+// Handle IPC for getting preview images - modified to support frontend pagination
+ipcMain.handle('get-preview-images', async (_, directory) => {
   try {
-    // Use the existing getImageFiles function but limit to specified count
-    const allImages = await getImageFiles(directory);
-    return allImages.slice(0, count);
+    // Get all images from the directory at once
+    const result = await getImageFiles(directory);
+    
+    // Return all images and total count
+    return { 
+      allImages: result.images,
+      totalCount: result.totalCount
+    };
   } catch (error) {
     console.error('Error getting preview images:', error);
-    return [];
+    return { 
+      allImages: [], 
+      totalCount: 0
+    };
   }
 });
 
@@ -257,11 +273,8 @@ ipcMain.handle('save-config', async (_, newConfig) => {
     // Update current config
     config = { ...config, ...newConfig };
     
-    // Save to disk - this would use the existing saveConfig function
-    // For now, we'll just log it
-    console.log('Saving configuration:', config);
-    
-    // TODO: Add actual file saving logic here
+    // Save to disk using the config module
+    await saveConfig(config);
     
     return true;
   } catch (error) {

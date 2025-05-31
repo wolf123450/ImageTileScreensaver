@@ -40,6 +40,17 @@ let imageCount: HTMLElement;
 let previewContainer: HTMLElement;
 let themeToggle: HTMLButtonElement; // Add theme toggle button reference
 
+// Add pagination state and image cache
+let currentImagePage = 0;
+let imagesPerPage = 5;
+let totalImageCount = 0;
+let cachedImageData: {
+    directory: string;
+    images: string[];
+    totalCount: number;
+    isLoading: boolean;
+} | null = null;
+
 // Init function to set up the UI when the DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     initElements();
@@ -105,6 +116,11 @@ function setupEventListeners(): void {
         }
     });
     
+    // Add event listener for manual directory input change
+    imageDirectoryInput.addEventListener('change', () => {
+        validateDirectory(imageDirectoryInput.value);
+    });
+    
     // Pattern selection
     patternOptions.forEach(option => {
         option.addEventListener('click', () => {
@@ -139,7 +155,8 @@ function updateUIFromConfig(savedConfig: any): void {
     
     if (savedConfig.imageFolder) {
         imageDirectoryInput.value = savedConfig.imageFolder;
-        validateDirectory(savedConfig.imageFolder);
+        // Initialize directory and image data
+        validateDirectory(savedConfig.imageFolder, true);
     }
     
     if (savedConfig.includeSubdirectories !== undefined) {
@@ -187,7 +204,7 @@ function applyTheme(theme: string): void {
 }
 
 // Validate directory and show preview of images
-async function validateDirectory(directory: string): Promise<void> {
+async function validateDirectory(directory: string, isInitialLoad = false): Promise<void> {
     try {
         const directoryExists = await window.electronAPI.validateDirectory(directory);
         
@@ -195,41 +212,170 @@ async function validateDirectory(directory: string): Promise<void> {
             directoryStatus.textContent = 'Directory is valid';
             directoryStatus.className = 'status-message success';
             
-            // Load image previews
-            const images = await window.electronAPI.getPreviewImages(directory, 5);
-            updateImagePreviews(images);
+            // Reset pagination when directory changes
+            currentImagePage = 0;
+            
+            // Only load images if we don't have them cached already
+            if (!isInitialLoad || !cachedImageData || cachedImageData.directory !== directory) {
+                await loadAllImages(directory);
+            } else {
+                // If we already have the images cached, just update the UI
+                updateImagePreviewsUI();
+            }
         } else {
             directoryStatus.textContent = 'Directory does not exist';
             directoryStatus.className = 'status-message error';
             imageCount.textContent = 'No images found';
             previewContainer.innerHTML = '';
+            cachedImageData = null;
         }
     } catch (error) {
         console.error('Error validating directory:', error);
         directoryStatus.textContent = 'Error validating directory';
         directoryStatus.className = 'status-message error';
+        cachedImageData = null;
     }
 }
 
-// Update image preview section
-function updateImagePreviews(images: string[]): void {
+// Load all images from a directory
+async function loadAllImages(directory: string): Promise<void> {
+    // Show loading state
+    imageCount.textContent = 'Loading images...';
     previewContainer.innerHTML = '';
     
-    if (images.length === 0) {
+    // Set initial loading state
+    cachedImageData = {
+        directory,
+        images: [],
+        totalCount: 0,
+        isLoading: true
+    };
+    
+    try {
+        // Get all images from the directory
+        const result = await window.electronAPI.getPreviewImages(directory);
+        
+        // Update cache with all images
+        cachedImageData = {
+            directory,
+            images: result.allImages,
+            totalCount: result.totalCount,
+            isLoading: false
+        };
+        
+        totalImageCount = result.totalCount;
+        
+        // Update UI with the first page
+        updateImagePreviewsUI();
+        
+    } catch (error) {
+        console.error('Error loading images:', error);
+        imageCount.textContent = 'Error loading images';
+        previewContainer.innerHTML = '';
+        cachedImageData = null;
+    }
+}
+
+// Update the UI based on current pagination settings
+function updateImagePreviewsUI(): void {
+    // Clear the container
+    previewContainer.innerHTML = '';
+    
+    if (!cachedImageData) {
+        imageCount.textContent = 'No images found';
+        return;
+    }
+    
+    if (cachedImageData.isLoading) {
+        imageCount.textContent = 'Loading images...';
+        return;
+    }
+    
+    const total = cachedImageData.totalCount;
+    
+    if (total === 0) {
         imageCount.textContent = 'No images found in this directory';
         return;
     }
     
-    imageCount.textContent = `Found ${images.length} images`;
+    // Calculate page bounds
+    const startIndex = currentImagePage * imagesPerPage;
+    const endIndex = Math.min(startIndex + imagesPerPage, total);
+    
+    // Display count and pagination info
+    imageCount.textContent = `Found ${total} images (showing ${startIndex + 1}-${endIndex})`;
+    
+    // Get images for the current page
+    const pageImages = cachedImageData.images.slice(startIndex, endIndex);
     
     // Create preview thumbnails
-    images.forEach(imagePath => {
+    pageImages.forEach(imagePath => {
         const img = document.createElement('img');
         img.src = imagePath;
         img.alt = 'Preview';
-        img.title = imagePath.split('/').pop() || imagePath;
+        img.title = imagePath.split(/[/\\]/).pop() || imagePath; // Handle both slash types
         previewContainer.appendChild(img);
     });
+    
+    // Add pagination controls if needed
+    if (total > imagesPerPage) {
+        addPaginationControls();
+    }
+}
+
+// Add pagination controls to navigate between pages
+function addPaginationControls(): void {
+    if (!cachedImageData) return;
+    
+    const paginationDiv = document.createElement('div');
+    paginationDiv.className = 'pagination-controls';
+    
+    // Calculate max page correctly
+    const maxPage = Math.ceil(cachedImageData.totalCount / imagesPerPage) - 1;
+    
+    // Previous button
+    const prevButton = document.createElement('button');
+    prevButton.textContent = '← Previous';
+    prevButton.disabled = currentImagePage === 0;
+    prevButton.addEventListener('click', () => {
+        if (currentImagePage > 0) {
+            currentImagePage--;
+            updateImagePreviewsUI();
+        }
+    });
+    
+    // Next button
+    const nextButton = document.createElement('button');
+    nextButton.textContent = 'Next →';
+    nextButton.disabled = currentImagePage >= maxPage;
+    nextButton.addEventListener('click', () => {
+        if (currentImagePage < maxPage) {
+            currentImagePage++;
+            updateImagePreviewsUI();
+        }
+    });
+    
+    // Page indicator
+    const pageIndicator = document.createElement('span');
+    pageIndicator.textContent = `Page ${currentImagePage + 1} of ${maxPage + 1}`;
+    
+    // Add refresh button
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '↻ Refresh';
+    refreshButton.title = 'Refresh image list';
+    refreshButton.className = 'refresh-button';
+    refreshButton.addEventListener('click', () => {
+        loadAllImages(cachedImageData!.directory);
+    });
+    
+    // Add elements to the pagination div
+    paginationDiv.appendChild(prevButton);
+    paginationDiv.appendChild(pageIndicator);
+    paginationDiv.appendChild(nextButton);
+    paginationDiv.appendChild(refreshButton);
+    
+    // Add pagination div to the preview container
+    previewContainer.appendChild(paginationDiv);
 }
 
 // Validate numeric input fields
