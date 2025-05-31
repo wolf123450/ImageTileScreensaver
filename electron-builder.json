@@ -1,48 +1,20 @@
 {
-  "appId": "com.example.imagetilescreensaver",
+  "appId": "com.imagetile.screensaver",
   "productName": "Image Tile Screensaver",
-  "files": [
-    "dist/**/*",
-    "assets/**/*"
-  ],
   "directories": {
     "output": "build"
   },
+  "files": [
+    "dist/**/*",
+    "package.json",
+    "index.html",
+    "assets/**/*"
+  ],
   "win": {
     "target": "nsis",
-    "icon": "assets/icons/icon.ico"
+    "icon": "assets/icon.ico",
+    "signingHashAlgorithms": null,
+    "signAndEditExecutable": false
   },
-  "nsis": {
-    "oneClick": true,
-    "perMachine": true,
-    "allowToChangeInstallationDirectory": false
-  },
-  "mac": {
-    "target": "dmg",
-    "icon": "assets/icons/icon.icns"
-  },
-  "linux": {
-    "target": "AppImage",
-    "icon": "assets/icons/icon.png"
-  },
-  "build": {
-    "appId": "com.example.imagetilescreensaver",
-    "productName": "Image Tile Screensaver",
-    "files": [
-      "dist/**/*",
-      "assets/**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icons/icon.ico"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "assets/icons/icon.icns"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "assets/icons/icon.png"
-    }
-  }
+  "forceCodeSigning": false
 }

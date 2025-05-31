@@ -1,40 +1,50 @@
-export function generateGridPattern(rows: number, cols: number): number[][] {
-    const pattern: number[][] = [];
-    for (let i = 0; i < rows; i++) {
-        const row: number[] = [];
-        for (let j = 0; j < cols; j++) {
-            row.push(i * cols + j);
+// Basic pattern generator for the screensaver
+
+import { DisplayInfo } from '../display';
+
+// Pattern interface for generating image layouts
+export interface Pattern {
+  name: string;
+  generateLayout(displays: DisplayInfo[], imageUrls: string[]): ImageLayout[];
+}
+
+// Describes how an image should be positioned
+export interface ImageLayout {
+  imageUrl: string;
+  position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+// Simple pattern that just places one image centered on each display
+export const simplePattern: Pattern = {
+  name: 'simple',
+  generateLayout(displays: DisplayInfo[], imageUrls: string[]): ImageLayout[] {
+    const layouts: ImageLayout[] = [];
+    
+    displays.forEach((display, index) => {
+      // Use modulo to cycle through available images if there are fewer images than displays
+      const imageIndex = index % imageUrls.length;
+      
+      layouts.push({
+        imageUrl: imageUrls[imageIndex],
+        position: {
+          x: display.bounds.x,
+          y: display.bounds.y,
+          width: display.bounds.width,
+          height: display.bounds.height
         }
-        pattern.push(row);
-    }
-    return pattern;
-}
+      });
+    });
+    
+    return layouts;
+  }
+};
 
-export function generateSpiralPattern(size: number): number[] {
-    const pattern: number[] = [];
-    const visited: boolean[][] = Array.from({ length: size }, () => Array(size).fill(false));
-    let row = 0, col = 0, dRow = 0, dCol = 1;
-
-    for (let i = 0; i < size * size; i++) {
-        pattern.push(row * size + col);
-        visited[row][col] = true;
-
-        if (visited[(row + dRow + size) % size][(col + dCol + size) % size]) {
-            [dRow, dCol] = [dCol, -dRow]; // Change direction
-        }
-
-        row = (row + dRow + size) % size;
-        col = (col + dCol + size) % size;
-    }
-
-    return pattern;
-}
-
-export function generateRandomPattern(count: number): number[] {
-    const pattern: number[] = Array.from({ length: count }, (_, index) => index);
-    for (let i = pattern.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pattern[i], pattern[j]] = [pattern[j], pattern[i]]; // Swap
-    }
-    return pattern;
-}
+// Export available patterns
+export const patterns: Record<string, Pattern> = {
+  simple: simplePattern
+};

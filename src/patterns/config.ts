@@ -9,6 +9,11 @@ export interface Config {
         patternType: string;
         randomize: boolean;
     };
+    transition: {
+        changeInterval: number;
+        effect: string;
+        duration: number;
+    };
 }
 
 const defaultConfig: Config = {
@@ -21,6 +26,11 @@ const defaultConfig: Config = {
         patternType: 'grid',
         randomize: false,
     },
+    transition: {
+        changeInterval: 10000, // 10 seconds
+        effect: 'fade',
+        duration: 1000, // 1 second
+    }
 };
 
 export function getConfig(): Config {

@@ -1,35 +1,30 @@
 {
   "name": "image-tile-screensaver",
-  "version": "1.0.0",
-  "description": "A screensaver that tiles images across multiple displays in varying patterns.",
-  "main": "src/main.ts",
+  "version": "0.1.0",
+  "description": "A screensaver that tiles images across multiple displays",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "package": "electron-builder --win"
+    "start": "npm run build && electron .",
+    "build": "tsc && webpack",
+    "watch": "concurrently \"tsc -w\" \"webpack --watch\"",
+    "lint": "eslint -c .eslintrc --ext .ts ./src",
+    "dist": "npm run build && electron-builder --config electron-builder.json",
+    "postinstall": "electron-builder install-app-deps"
   },
-  "keywords": [
-    "screensaver",
-    "electron",
-    "images",
-    "tiling",
-    "multi-display"
-  ],
-  "author": "Your Name",
+  "entrypoints": {
+    "main": "dist/main.js",
+    "preload": "dist/preload.js"
+  },
+  "author": "",
   "license": "MIT",
-  "dependencies": {
-    "electron": "^25.0.0"
-  },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "electron-builder": "^24.0.0"
-  },
-  "homepage": "https://github.com/yourusername/image-tile-screensaver",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yourusername/image-tile-screensaver.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/image-tile-screensaver/issues"
+    "dotenv": "^16.5.0",
+    "electron": "^26.0.0",
+    "electron-builder": "^24.6.3",
+    "typescript": "^5.1.6",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.4.4",
+    "concurrently": "^8.2.1"
   }
 }
