@@ -24,6 +24,7 @@ export type ContextBridgeApi = {
     applyConfig: (config: any) => Promise<void>;
     saveConfig: (config: any) => Promise<void>;
     closeConfigWindow: () => void;
+    getLogPath: () => Promise<string>; // New method for getting log path
 };
 
 const exposedAPI: ContextBridgeApi = {
@@ -37,7 +38,8 @@ const exposedAPI: ContextBridgeApi = {
         ipcRenderer.invoke('get-preview-images', directory),
     applyConfig: (config) => ipcRenderer.invoke('apply-config', config),
     saveConfig: (config) => ipcRenderer.invoke('save-config', config),
-    closeConfigWindow: () => ipcRenderer.send('close-config-window')
+    closeConfigWindow: () => ipcRenderer.send('close-config-window'),
+    getLogPath: () => ipcRenderer.invoke('get-log-path') // Expose new method
 };
 
 contextBridge.exposeInMainWorld(

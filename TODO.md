@@ -13,27 +13,27 @@ This document outlines features and improvements that need to be implemented or 
      - Create form elements for all configurable settings (image directory, change interval, patterns, etc.)
      - Add validation for user inputs (directory exists, interval is a positive number, etc.)
   
-  2. [ ] **CF-2.2:** Add Configuration Window Management:
+  2. [x] **CF-2.2:** Add Configuration Window Management:
      - Create a new electron BrowserWindow specifically for configuration
      - Implement proper window sizing, positioning, and styling for a dialog
      - Add modal behavior to block interaction with other windows when config is open
   
-  3. [ ] **CF-2.3:** Command Line Argument Handling:
+  3. [x] **CF-2.3:** Command Line Argument Handling:
      - Enhance the existing `/c` handler in `main.ts` to create and show the config window
      - Add proper argument parsing for any additional parameters
      - Implement Windows-specific behavior for configuration dialog integration
   
-  4. [ ] **CF-2.4:** Configuration Persistence:
+  4. [x] **CF-2.4:** Configuration Persistence:
      - Create a configuration file format (JSON) to store user settings
      - Implement read/write functions for the configuration file
      - Add functions to apply configuration changes in real-time
   
-  5. [ ] **CF-2.5:** Configuration API:
+  5. [x] **CF-2.5:** Configuration API:
      - Extend the IPC interface in `preload.ts` to expose configuration-related functions
      - Add methods for saving, loading, and validating configuration
      - Create event emitters for configuration changes
   
-  6. [ ] **CF-2.6:** UI/UX Refinement:
+  6. [x] **CF-2.6:** UI/UX Refinement:
      - Add proper error handling with user-friendly messages
      - Implement "Apply", "Save", and "Cancel" buttons with appropriate behaviors
      - Create a directory browser dialog for selecting image folders
@@ -94,13 +94,13 @@ This document outlines features and improvements that need to be implemented or 
      - Add visual representation of the user's monitor layout
      - Support dragging and dropping settings between monitors
 
-  7. [ ] **UI-1.7:** Settings Persistence Integration:
+  7. [x] **UI-1.7:** Settings Persistence Integration:
      - Connect UI components to configuration read/write functions
      - Implement real-time validation and feedback
      - Add "reset to defaults" functionality
      - Create import/export capabilities for sharing configurations
 
-  8. [ ] **UI-1.8:** Accessibility and Usability:
+  8. [x] **UI-1.8:** Accessibility and Usability:
      - Implement keyboard navigation throughout the UI
      - Add tooltips and help text for complex options
      - Ensure proper contrast and text sizing
@@ -113,7 +113,7 @@ This document outlines features and improvements that need to be implemented or 
      - Optimize performance for smooth interactions
 
 - [ ] **UI-2:** Create a standalone settings application for non-Windows platforms [6/10]
-- [ ] **UI-3:** Add visual feedback during image loading [7/10]
+- [x] **UI-3:** Add visual feedback during image loading [7/10]
 - [x] **UI-4:** Implement a preview panel in the configuration dialog [9/10]
 
 ## Medium Priority
