@@ -10,7 +10,7 @@ module.exports = (env, argv) => {
     mode: isProduction ? 'production' : 'development',
     entry: {
       renderer: './src/renderer.ts',
-      config: './src/configui/screensaver-settings.ts', // Updated path
+      settings: './src/configui/screensaver-settings.ts',
       main: './src/main.ts',
       preload: './src/preload.ts'
     },
@@ -33,7 +33,8 @@ module.exports = (env, argv) => {
       new CopyPlugin({
         patterns: [
           { from: 'src/configui/*.html', to: 'configui/[name][ext]' },
-          { from: 'src/configui/*.css', to: 'configui/[name][ext]' }
+          { from: 'src/configui/*.css', to: 'configui/[name][ext]' },
+          { from: 'src/index.html', to: 'index.html' }
         ],
       }),
       new DefinePlugin({
@@ -63,17 +64,7 @@ module.exports = (env, argv) => {
           extractComments: false,
         }),
       ],
-      splitChunks: isProduction ? {
-        chunks: 'all',
-        name: 'vendors',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all'
-          }
-        }
-      } : false
+      splitChunks: false
     },
     performance: {
       hints: isProduction ? 'warning' : false

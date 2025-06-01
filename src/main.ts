@@ -44,7 +44,7 @@ function createScreensaverWindows() {
       width: display.bounds.width,
       height: display.bounds.height,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
+        preload: path.join(__dirname, 'preload.bundle.js'),
         nodeIntegration: true
       },
       fullscreen: true,
@@ -55,7 +55,7 @@ function createScreensaverWindows() {
     // Load the index.html file with a query parameter for display identification
     win.loadURL(
       url.format({
-        pathname: path.join(__dirname, '../index.html'),
+        pathname: path.join(__dirname, 'index.html'),
         protocol: 'file:',
         slashes: true,
         query: { 
@@ -174,7 +174,7 @@ function createConfigWindow() {
     height: 700,
     title: 'Image Tile Screensaver Configuration',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.bundle.js'),
       nodeIntegration: false,
       contextIsolation: true
     },

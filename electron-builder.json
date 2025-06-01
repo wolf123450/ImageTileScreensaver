@@ -7,7 +7,7 @@
   "files": [
     "dist/**/*",
     "package.json",
-    "index.html",
+    "dist/index.html",
     "assets/**/*"
   ],
   "win": {

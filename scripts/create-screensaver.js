@@ -38,12 +38,6 @@ fs.renameSync(exeInScrDir, scrOutputPath);
 
 console.log('Screensaver package created successfully');
 
-// Instructions for uninstallation of previous broken installation
-console.log('\nTo uninstall the previously installed screensaver:');
-console.log('1. Open Command Prompt as Administrator');
-console.log(`2. Run: reg delete "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Screen Savers\\${appName}" /f`);
-console.log('3. Delete the .scr file from C:\\Windows\\System32 if it exists');
-
 // Instructions for installation
 console.log('\nNew installation instructions:');
 console.log(`1. Copy the entire "${scrOutputDir}" folder to a permanent location`);

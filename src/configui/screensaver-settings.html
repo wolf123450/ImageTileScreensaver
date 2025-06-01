@@ -61,17 +61,6 @@
                     </label>
                 </div>
                 
-                <div class="form-group">
-                    <label for="image-fit-style">Image Fit Style:</label>
-                    <select id="image-fit-style">
-                        <option value="cover">Cover (Fill area, may crop)</option>
-                        <option value="contain">Contain (Show full image)</option>
-                        <option value="fill">Fill (Stretch to fit)</option>
-                        <option value="scale-down">Scale Down (Fit within area)</option>
-                    </select>
-                    <div class="help-text">Controls how images are sized within their display area.</div>
-                </div>
-                
                 <div class="image-preview">
                     <h3>Image Preview</h3>
                     <div id="image-count">No images found</div>
@@ -123,6 +112,17 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="image-fit-style">Image Fit Style:</label>
+                    <select id="image-fit-style">
+                        <option value="cover">Cover (Fill area, may crop)</option>
+                        <option value="contain">Contain (Show full image)</option>
+                        <option value="fill">Fill (Stretch to fit)</option>
+                        <option value="scale-down">Scale Down (Fit within area)</option>
+                    </select>
+                    <div class="help-text">Controls how images are sized within their display area.</div>
+                </div>
+                
+                <div class="form-group">
                     <label for="transition-effect">Transition Effect:</label>
                     <select id="transition-effect">
                         <option value="none">None</option>
@@ -150,6 +150,6 @@
         </div>
     </div>
     
-    <script src="config.js"></script>
+    <script src="../settings.bundle.js"></script>
 </body>
 </html>

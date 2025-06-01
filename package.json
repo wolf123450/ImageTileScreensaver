@@ -3,25 +3,25 @@
   "version": "0.1.0",
   "description": "A screensaver that tiles images across multiple displays",
   "productName": "Image Tile Screensaver",
-  "main": "dist/main.js",
+  "main": "dist/main.bundle.js",
   "scripts": {
-    "start": "npm run build && electron .",
+    "start": "electron .",
     "build": "webpack --mode=development",
     "build:prod": "webpack --mode=production",
+    "clean": "rimraf dist .build .temp build",
+    "clean:all": "rimraf dist node_modules .build .temp build",
     "copy-assets": "copyfiles -u 1 \"src/configui/*.html\" \"src/configui/*.css\" dist/",
     "watch": "concurrently \"tsc -w\" \"webpack --watch\"",
     "lint": "eslint -c .eslintrc --ext .ts ./src",
     "dist": "npm run build && electron-builder --config electron-builder.json",
     "predist": "npm install --omit=dev",
     "postdist": "npm install",
-    "prebuild:screensaver": "npm install --production=false",
-    "build:screensaver": "node scripts/build-screensaver.js",
-    "postbuild:screensaver": "npm install",
+    "build:screensaver": "webpack --mode=production && electron-builder --config electron-builder.json && node scripts/create-screensaver.js",
     "postinstall": "electron-builder install-app-deps"
   },
   "entrypoints": {
-    "main": "dist/main.js",
-    "preload": "dist/preload.js"
+    "main": "dist/main.bundle.js",
+    "preload": "dist/preload.bundle.js"
   },
   "author": "",
   "license": "MIT",
