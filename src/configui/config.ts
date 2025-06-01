@@ -6,7 +6,8 @@ interface ConfigValues {
     multiMonitorSync: boolean;
     transitionEffect: string;
     transitionDuration: number;
-    theme: string; // Add theme property
+    theme: string;
+    imageFitStyle: string; // Add image fit style property
 }
 
 // Default values
@@ -18,7 +19,8 @@ let config: ConfigValues = {
     multiMonitorSync: false,
     transitionEffect: 'fade',
     transitionDuration: 1000,
-    theme: 'light' // Default theme
+    theme: 'light',
+    imageFitStyle: 'cover' // Default image fit style
 };
 
 // DOM Elements
@@ -40,6 +42,7 @@ let directoryStatus: HTMLElement;
 let imageCount: HTMLElement;
 let previewContainer: HTMLElement;
 let themeToggle: HTMLButtonElement; // Add theme toggle button reference
+let imageFitStyleSelect: HTMLSelectElement; // Add image fit style select reference
 
 // Add pagination state and image cache
 let currentImagePage = 0;
@@ -93,6 +96,7 @@ function initElements(): void {
     previewContainer = document.getElementById('preview-container') as HTMLElement;
     
     themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
+    imageFitStyleSelect = document.getElementById('image-fit-style') as HTMLSelectElement;
 }
 
 // Set up event listeners for the UI elements
@@ -185,6 +189,10 @@ function updateUIFromConfig(savedConfig: any): void {
     if (savedConfig.theme) {
         config.theme = savedConfig.theme;
         applyTheme(savedConfig.theme);
+    }
+    
+    if (savedConfig.imageFitStyle) {
+        imageFitStyleSelect.value = savedConfig.imageFitStyle;
     }
 }
 
@@ -549,7 +557,8 @@ function getConfigFromUI(): ConfigValues {
         multiMonitorSync: multiMonitorSyncCheckbox.checked,
         transitionEffect: transitionEffectSelect.value,
         transitionDuration: Number(transitionDurationInput.value) || 1000,
-        theme: config.theme
+        theme: config.theme,
+        imageFitStyle: imageFitStyleSelect.value // Get image fit style from UI
     };
 }
 
@@ -568,7 +577,8 @@ async function applyChanges(): Promise<void> {
                 effect: newConfig.transitionEffect,
                 duration: newConfig.transitionDuration
             },
-            theme: newConfig.theme
+            theme: newConfig.theme,
+            imageFitStyle: newConfig.imageFitStyle // Add image fit style to config object
         });
         
         showSuccessMessage('Settings applied successfully');
@@ -593,7 +603,8 @@ async function saveChanges(): Promise<void> {
                 effect: newConfig.transitionEffect,
                 duration: newConfig.transitionDuration
             },
-            theme: newConfig.theme
+            theme: newConfig.theme,
+            imageFitStyle: newConfig.imageFitStyle // Add image fit style to config object
         });
         
         showSuccessMessage('Settings saved successfully');
@@ -619,7 +630,8 @@ async function saveAndClose(): Promise<void> {
                 effect: newConfig.transitionEffect,
                 duration: newConfig.transitionDuration
             },
-            theme: newConfig.theme
+            theme: newConfig.theme,
+            imageFitStyle: newConfig.imageFitStyle // Add image fit style to config object
         });
         
         // Close window immediately without showing popup

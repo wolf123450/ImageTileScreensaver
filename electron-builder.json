@@ -16,5 +16,10 @@
     "signingHashAlgorithms": null,
     "signAndEditExecutable": false
   },
-  "forceCodeSigning": false
+  "forceCodeSigning": false,
+  "asar": true,
+  "compression": "maximum",
+  "removePackageScripts": true,
+  "extraResources": [],
+  "extraFiles": []
 }

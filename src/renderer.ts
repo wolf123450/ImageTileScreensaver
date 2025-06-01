@@ -15,6 +15,7 @@ let currentImageIndex = 0;
 let changeInterval: number = 10000; // Default 10 seconds
 let displayId: number = 0;
 let displayCount: number = 1;
+let imageFitStyle: string = 'cover'; // Default image fit style
 
 console.log('Renderer process started, setting up event listeners and loading images');
 
@@ -50,34 +51,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.electronAPI.closeScreensaver();
   }, true); // Use capturing to ensure event gets processed early
 
-  // document.addEventListener('mousedown', (event) => {
-  //   console.log('Mouse down at:', event.clientX, event.clientY);
-  //   window.electronAPI.closeScreensaver();
-  // }, true);
+  document.addEventListener('mousedown', (event) => {
+    console.log('Mouse down at:', event.clientX, event.clientY);
+    window.electronAPI.closeScreensaver();
+  }, true);
 
   // Track initial mouse position for movement detection
   let initialX = 0;
   let initialY = 0;
   
   // Set initial position when mouse starts moving
-  // document.addEventListener('mousemove', (e) => {
-  //   if (initialX === 0 && initialY === 0) {
-  //     initialX = e.clientX;
-  //     initialY = e.clientY;
-  //     return;
-  //   }
+  document.addEventListener('mousemove', (e) => {
+    if (initialX === 0 && initialY === 0) {
+      initialX = e.clientX;
+      initialY = e.clientY;
+      return;
+    }
     
-  //   // Calculate absolute distance moved
-  //   const deltaX = Math.abs(e.clientX - initialX);
-  //   const deltaY = Math.abs(e.clientY - initialY);
+    // Calculate absolute distance moved
+    const deltaX = Math.abs(e.clientX - initialX);
+    const deltaY = Math.abs(e.clientY - initialY);
     
-  //   // Allow small mouse movements without exiting (threshold of 5 pixels)
-  //   const threshold = 5;
-  //   if (deltaX > threshold || deltaY > threshold) {
-  //     console.log(`Mouse moved beyond threshold: delta X=${deltaX}, delta Y=${deltaY}`);
-  //     window.electronAPI.closeScreensaver();
-  //   }
-  // }, true);
+    // Allow small mouse movements without exiting (threshold of 5 pixels)
+    const threshold = 5;
+    if (deltaX > threshold || deltaY > threshold) {
+      console.log(`Mouse moved beyond threshold: delta X=${deltaX}, delta Y=${deltaY}`);
+      window.electronAPI.closeScreensaver();
+    }
+  }, true);
 
   // Also add click handler as a fallback
   document.addEventListener('click', () => {
@@ -89,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load configuration
     const config = await window.electronAPI.getConfig();
     changeInterval = config.changeInterval || 10000;
+    imageFitStyle = config.imageFitStyle || 'cover'; // Load image fit style from config
     
     // Load all images
     images = await window.electronAPI.getImages();
@@ -169,7 +171,7 @@ async function applyGridPattern(container: HTMLElement, imageUrls: string[], con
       img.src = imageUrls[randomImageIndex];
       img.style.width = '100%';
       img.style.height = '100%';
-      img.style.objectFit = 'cover';
+      img.style.objectFit = imageFitStyle; // Use the configured image fit style
       img.style.transition = 'opacity 0.5s ease-in-out';
       
       cell.appendChild(img);
@@ -184,7 +186,7 @@ async function applyGridPattern(container: HTMLElement, imageUrls: string[], con
   const totalCells = config.rows * config.cols;
   const individualRefreshInterval = changeInterval / totalCells;
   
-  // Set up timers to replace images one by one
+  // Set up timers to refresh images one at a time
   setupGridRefreshTimers(imageUrls, individualRefreshInterval);
 }
 
@@ -196,18 +198,6 @@ function setupGridRefreshTimers(imageUrls: string[], interval: number) {
   
   // Clear any existing timers to avoid conflicts
   clearGridRefreshTimers();
-  
-  // Initial staggered replacement of random images
-  for (let i = 0; i < gridCells.length; i++) {
-    // Initial delay to start the sequence
-    const initialTimer = setTimeout(() => {
-      console.log(`Initial staggered update for cell ${i}`);
-      // Replace a random image at a random position
-      replaceRandomGridImage(imageUrls);
-    }, i * interval);
-    
-    gridRefreshTimers.push(initialTimer);
-  }
   
   // Set a single interval timer that will replace one random image at a time
   // This avoids the reset pattern by not having multiple independent timers
@@ -246,7 +236,7 @@ function replaceRandomGridImage(imageUrls: string[]) {
   newImg.src = newImageSrc;
   newImg.style.width = '100%';
   newImg.style.height = '100%';
-  newImg.style.objectFit = 'cover';
+  newImg.style.objectFit = imageFitStyle; // Use the configured image fit style
   newImg.style.opacity = '0';
   newImg.style.position = 'absolute';
   newImg.style.top = '0';
@@ -316,7 +306,7 @@ function displayImageByIndex(index: number) {
   img.src = images[index];
   img.style.width = '100%';
   img.style.height = '100%';
-  img.style.objectFit = 'contain';
+  img.style.objectFit = imageFitStyle; // Use the configured image fit style
   
   // Add fade-in effect
   img.style.opacity = '0';
