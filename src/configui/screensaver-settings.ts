@@ -7,7 +7,7 @@ interface ConfigValues {
     transitionEffect: string;
     transitionDuration: number;
     theme: string;
-    imageFitStyle: string; // Add image fit style property
+    imageFitStyle: string;
 }
 
 // Default values

@@ -185,7 +185,7 @@ function createConfigWindow() {
   // Load the configuration HTML
   // Use URL format with protocol to avoid path resolution issues
   const configPath = url.format({
-    pathname: path.join(__dirname, 'configui', 'config.html'),
+    pathname: path.join(__dirname, 'configui', 'screensaver-settings.html'), // Updated filename
     protocol: 'file:',
     slashes: true
   });

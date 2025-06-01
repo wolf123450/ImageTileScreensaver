@@ -1,11 +1,29 @@
-// Basic pattern generator for the screensaver
-
 import { DisplayInfo } from '../display';
+import { SimplePattern } from './simple-pattern';
+import { GridPattern } from './grid-pattern';
 
-// Pattern interface for generating image layouts
+// Core pattern interface
 export interface Pattern {
   name: string;
-  generateLayout(displays: DisplayInfo[], imageUrls: string[]): ImageLayout[];
+  
+  /**
+   * Initialize the pattern with configuration settings
+   * @param config Configuration object for the pattern
+   */
+  init(config: any): void;
+  
+  /**
+   * Apply the pattern to a container element using the provided images
+   * @param container The DOM element to apply the pattern to
+   * @param imageUrls Array of image URLs to use
+   * @param displayInfo Optional display information
+   */
+  apply(container: HTMLElement, imageUrls: string[], displayInfo?: DisplayInfo): void;
+  
+  /**
+   * Clean up any resources or timers used by the pattern
+   */
+  cleanup(): void;
 }
 
 // Describes how an image should be positioned
@@ -19,86 +37,12 @@ export interface ImageLayout {
   };
 }
 
-// Grid pattern configuration
-export interface GridPatternConfig {
-  rows: number;
-  cols: number;
-  spacing?: number; // Optional spacing between grid cells in pixels
-}
+// Export pattern implementations
+export { SimplePattern } from './simple-pattern';
+export { GridPattern } from './grid-pattern';
 
-// Simple pattern that just places one image centered on each display
-export const simplePattern: Pattern = {
-  name: 'simple',
-  generateLayout(displays: DisplayInfo[], imageUrls: string[]): ImageLayout[] {
-    const layouts: ImageLayout[] = [];
-    
-    displays.forEach((display, index) => {
-      // Use modulo to cycle through available images if there are fewer images than displays
-      const imageIndex = index % imageUrls.length;
-      
-      layouts.push({
-        imageUrl: imageUrls[imageIndex],
-        position: {
-          x: display.bounds.x,
-          y: display.bounds.y,
-          width: display.bounds.width,
-          height: display.bounds.height
-        }
-      });
-    });
-    
-    return layouts;
-  }
-};
-
-// Grid pattern that arranges images in a grid layout
-export const gridPattern: Pattern = {
-  name: 'grid',
-  generateLayout(displays: DisplayInfo[], imageUrls: string[], config?: GridPatternConfig): ImageLayout[] {
-    const layouts: ImageLayout[] = [];
-    
-    // Default grid configuration if not provided
-    const gridConfig: GridPatternConfig = config || { rows: 2, cols: 3, spacing: 10 };
-    
-    displays.forEach((display) => {
-      const { x, y, width, height } = display.bounds;
-      
-      // Calculate cell dimensions
-      const cellSpacing = gridConfig.spacing || 0;
-      const cellWidth = (width - (cellSpacing * (gridConfig.cols - 1))) / gridConfig.cols;
-      const cellHeight = (height - (cellSpacing * (gridConfig.rows - 1))) / gridConfig.rows;
-      
-      // Generate grid cells
-      for (let row = 0; row < gridConfig.rows; row++) {
-        for (let col = 0; col < gridConfig.cols; col++) {
-          // Calculate image index, cycling through available images
-          const cellIndex = row * gridConfig.cols + col;
-          const imageIndex = cellIndex % imageUrls.length;
-          
-          // Calculate cell position
-          const cellX = x + col * (cellWidth + cellSpacing);
-          const cellY = y + row * (cellHeight + cellSpacing);
-          
-          // Add to layouts
-          layouts.push({
-            imageUrl: imageUrls[imageIndex],
-            position: {
-              x: cellX,
-              y: cellY,
-              width: cellWidth,
-              height: cellHeight
-            }
-          });
-        }
-      }
-    });
-    
-    return layouts;
-  }
-};
-
-// Export available patterns
+// Create a registry of available patterns
 export const patterns: Record<string, Pattern> = {
-  simple: simplePattern,
-  grid: gridPattern
+  simple: new SimplePattern(),
+  grid: new GridPattern()
 };

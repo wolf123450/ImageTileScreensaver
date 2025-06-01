@@ -10,7 +10,7 @@ module.exports = (env, argv) => {
     mode: isProduction ? 'production' : 'development',
     entry: {
       renderer: './src/renderer.ts',
-      config: './src/configui/config.ts',
+      config: './src/configui/screensaver-settings.ts', // Updated path
       main: './src/main.ts',
       preload: './src/preload.ts'
     },

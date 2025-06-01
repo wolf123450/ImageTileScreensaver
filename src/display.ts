@@ -34,7 +34,9 @@ app.on('activate', () => {
     }
 });
 
-// Basic display manager for the screensaver
+/**
+ * Interface representing display monitor information
+ */
 export interface DisplayInfo {
   id: number;
   bounds: {
@@ -43,27 +45,27 @@ export interface DisplayInfo {
     width: number;
     height: number;
   };
+  workArea?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  scaleFactor?: number;
+  isPrimary?: boolean;
 }
 
-export function getDisplays(): DisplayInfo[] {
-  const displays = screen.getAllDisplays();
-  
-  return displays.map((display, index) => ({
-    id: index + 1,
-    bounds: {
-      x: display.bounds.x,
-      y: display.bounds.y,
-      width: display.bounds.width,
-      height: display.bounds.height
+/**
+ * Gets information about all connected displays
+ */
+export function getAllDisplays(): Promise<DisplayInfo[]> {
+  // This would typically use Electron's screen API
+  // For now, returning a placeholder implementation
+  return Promise.resolve([
+    {
+      id: 0,
+      bounds: { x: 0, y: 0, width: 1920, height: 1080 },
+      isPrimary: true
     }
-  }));
-}
-
-export function positionElementOnDisplay(element: HTMLElement, display: DisplayInfo): void {
-  // Position an element on the specified display
-  element.style.position = 'absolute';
-  element.style.left = `${display.bounds.x}px`;
-  element.style.top = `${display.bounds.y}px`;
-  element.style.width = `${display.bounds.width}px`;
-  element.style.height = `${display.bounds.height}px`;
+  ]);
 }
