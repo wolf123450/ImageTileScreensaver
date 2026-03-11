@@ -45,7 +45,8 @@ function createScreensaverWindows() {
       height: display.bounds.height,
       webPreferences: {
         preload: path.join(__dirname, 'preload.bundle.js'),
-        nodeIntegration: true
+        nodeIntegration: false,
+        contextIsolation: true
       },
       fullscreen: true,
       frame: false,
