@@ -24,6 +24,12 @@
       align-items: center;
     }
   </style>
+  <script>
+    // Load Tauri bridge synchronously if running under Tauri (no Electron preload)
+    if (window.__TAURI_INTERNALS__) {
+      document.write('<script src="./tauri-bridge.bundle.js"><\/script>');
+    }
+  </script>
   <script src="./renderer.bundle.js" defer></script>
 </head>
 <body>

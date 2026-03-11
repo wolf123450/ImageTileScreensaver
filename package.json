@@ -17,6 +17,9 @@
     "predist": "npm install --omit=dev",
     "postdist": "npm install",
     "build:screensaver": "webpack --mode=production && electron-builder --config electron-builder.json && node scripts/create-screensaver.js",
+    "tauri:dev": "cargo tauri dev",
+    "tauri:dev:config": "cargo tauri dev -- -- /c",
+    "tauri:build": "cargo tauri build",
     "postinstall": "electron-builder install-app-deps"
   },
   "entrypoints": {
@@ -26,6 +29,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
     "dotenv": "^16.5.0",
     "winston": "^3.11.0"
   },

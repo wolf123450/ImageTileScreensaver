@@ -5,17 +5,27 @@ const { DefinePlugin } = require('webpack');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
-  
+  const isTauri = !!(env && env.tauri);
+
+  // Tauri builds only need renderer-side entries (no main/preload)
+  const entry = isTauri
+    ? {
+        'tauri-bridge': './src/tauri-bridge.ts',
+        renderer: './src/renderer.ts',
+        settings: './src/configui/screensaver-settings.ts',
+      }
+    : {
+        renderer: './src/renderer.ts',
+        settings: './src/configui/screensaver-settings.ts',
+        main: './src/main.ts',
+        preload: './src/preload.ts',
+      };
+
   return {
     mode: isProduction ? 'production' : 'development',
-    entry: {
-      renderer: './src/renderer.ts',
-      settings: './src/configui/screensaver-settings.ts',
-      main: './src/main.ts',
-      preload: './src/preload.ts'
-    },
+    entry,
     devtool: isProduction ? false : 'source-map',
-    target: 'electron-renderer',
+    target: isTauri ? 'web' : 'electron-renderer',
     module: {
       rules: [
         {
@@ -38,7 +48,8 @@ module.exports = (env, argv) => {
         ],
       }),
       new DefinePlugin({
-        'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development')
+        'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
+        '__TAURI__': JSON.stringify(isTauri)
       })
     ],
     resolve: {
