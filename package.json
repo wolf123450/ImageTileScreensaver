@@ -3,52 +3,36 @@
   "version": "0.1.0",
   "description": "A screensaver that tiles images across multiple displays",
   "productName": "Image Tile Screensaver",
-  "main": "dist/main.bundle.js",
+  "private": true,
   "scripts": {
-    "start": "electron .",
     "build": "webpack --mode=development",
     "build:prod": "webpack --mode=production",
-    "clean": "rimraf dist .build .temp build",
-    "clean:all": "rimraf dist node_modules .build .temp build",
-    "copy-assets": "copyfiles -u 1 \"src/configui/*.html\" \"src/configui/*.css\" dist/",
-    "watch": "concurrently \"tsc -w\" \"webpack --watch\"",
-    "lint": "eslint -c .eslintrc --ext .ts ./src",
-    "dist": "npm run build && electron-builder --config electron-builder.json",
-    "predist": "npm install --omit=dev",
-    "postdist": "npm install",
-    "build:screensaver": "webpack --mode=production && electron-builder --config electron-builder.json && node scripts/create-screensaver.js",
+    "clean": "rimraf dist",
+    "watch": "webpack --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "tauri:dev": "cargo tauri dev",
     "tauri:dev:config": "cargo tauri dev -- -- /c",
-    "tauri:build": "cargo tauri build",
-    "postinstall": "electron-builder install-app-deps"
-  },
-  "entrypoints": {
-    "main": "dist/main.bundle.js",
-    "preload": "dist/preload.bundle.js"
+    "tauri:build": "cargo tauri build"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-dialog": "^2.6.0",
-    "dotenv": "^16.5.0",
-    "winston": "^3.11.0"
+    "@tauri-apps/plugin-dialog": "^2.6.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.1",
+    "@playwright/mcp": "^0.0.68",
     "copy-webpack-plugin": "^11.0.0",
-    "copyfiles": "^2.4.1",
     "css-loader": "^6.8.1",
-    "dotenv": "^16.5.0",
-    "electron": "^26.0.0",
-    "electron-builder": "^24.6.3",
+    "jsdom": "^26.1.0",
     "rimraf": "^5.0.10",
     "style-loader": "^3.3.3",
     "terser-webpack-plugin": "^5.3.14",
     "ts-loader": "^9.4.4",
     "typescript": "^5.1.6",
+    "vitest": "^3.1.1",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4"
-  },
-  "electronVersion": "26.0.0"
+  }
 }

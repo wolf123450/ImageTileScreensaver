@@ -145,3 +145,17 @@ fn create_screensaver_windows(app: &tauri::App) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn parse_run_mode_defaults_to_screensaver() {
+        // When called with no relevant args, should default to screensaver
+        // (In unit tests we can't easily override std::env::args,
+        //  so we test the logic by checking the function exists and
+        //  the default path returns "screensaver".)
+        let (mode, _) = super::parse_run_mode();
+        // In test context, there are no /c /p /s args
+        assert_eq!(mode, "screensaver");
+    }
+}
+

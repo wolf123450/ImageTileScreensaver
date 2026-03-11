@@ -1,5 +1,5 @@
 import { Pattern } from './index';
-import { DisplayInfo } from '../display';
+import { replaceImageInCell } from './image-utils';
 
 export interface GridPatternConfig {
   rows: number;
@@ -106,52 +106,8 @@ export class GridPattern implements Pattern {
   
   private replaceRandomGridImage(imageUrls: string[]): void {
     if (this.gridCells.length === 0 || imageUrls.length === 0) return;
-    
-    // Select a random cell
     const randomCellIndex = Math.floor(Math.random() * this.gridCells.length);
-    const cell = this.gridCells[randomCellIndex];
-    
-    // Select a random image that's different from the current one
-    const img = cell.querySelector('img') as HTMLImageElement;
-    const currentSrc = img.src;
-    let newImageSrc = currentSrc;
-    
-    // Make sure we pick a different image
-    while (newImageSrc === currentSrc && imageUrls.length > 1) {
-      const randomImageIndex = Math.floor(Math.random() * imageUrls.length);
-      newImageSrc = imageUrls[randomImageIndex];
-    }
-    
-    // Create and add the new image with a fade effect
-    const newImg = document.createElement('img');
-    newImg.src = newImageSrc;
-    newImg.style.width = '100%';
-    newImg.style.height = '100%';
-    newImg.style.objectFit = this.config.imageFitStyle;
-    newImg.style.opacity = '0';
-    newImg.style.position = 'absolute';
-    newImg.style.top = '0';
-    newImg.style.left = '0';
-    newImg.style.transition = 'opacity 0.5s ease-in-out';
-    
-    // Add the new image
-    cell.appendChild(newImg);
-    
-    // Trigger reflow to ensure transition works
-    void newImg.offsetWidth;
-    
-    // Fade in new image
-    newImg.style.opacity = '1';
-    
-    // Fade out and remove the old image after transition completes
-    window.setTimeout(() => {
-      img.style.opacity = '0';
-      window.setTimeout(() => {
-        if (img.parentNode === cell) {
-          cell.removeChild(img);
-        }
-      }, 500);
-    }, 0);
+    replaceImageInCell(this.gridCells[randomCellIndex], imageUrls, this.config.imageFitStyle);
   }
   
   cleanup(): void {

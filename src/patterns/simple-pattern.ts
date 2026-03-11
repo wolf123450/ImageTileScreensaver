@@ -1,5 +1,4 @@
 import { Pattern } from './index';
-import { DisplayInfo } from '../display';
 
 export interface SimplePatternConfig {
   imageFitStyle: string;

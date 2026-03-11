@@ -10,29 +10,14 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import type { ScreensaverAPI, ScreensaverConfig, PreviewImagesResult } from './types';
 
 /** Convert an array of local file paths to asset protocol URLs */
 function toAssetUrls(paths: string[]): string[] {
     return paths.map(p => convertFileSrc(p));
 }
 
-export interface TauriBridgeApi {
-    closeScreensaver: () => void;
-    getImages: () => Promise<string[]>;
-    getConfig: () => Promise<any>;
-    browseDirectory: () => Promise<string | null>;
-    validateDirectory: (directory: string) => Promise<boolean>;
-    getPreviewImages: (directory: string) => Promise<{
-        allImages: string[];
-        totalCount: number;
-    }>;
-    applyConfig: (config: any) => Promise<void>;
-    saveConfig: (config: any) => Promise<void>;
-    closeConfigWindow: () => void;
-    getLogPath: () => Promise<string>;
-}
-
-const tauriAPI: TauriBridgeApi = {
+const tauriAPI: ScreensaverAPI = {
     closeScreensaver: () => {
         getCurrentWindow().close();
     },
@@ -42,7 +27,7 @@ const tauriAPI: TauriBridgeApi = {
         return toAssetUrls(paths);
     },
 
-    getConfig: () => invoke('get_config'),
+    getConfig: () => invoke<ScreensaverConfig>('get_config'),
 
     browseDirectory: async () => {
         const selected = await open({ directory: true, multiple: false });
@@ -54,17 +39,17 @@ const tauriAPI: TauriBridgeApi = {
         invoke<boolean>('validate_directory', { directory }),
 
     getPreviewImages: async (directory: string) => {
-        const result = await invoke<{ allImages: string[]; totalCount: number }>('get_preview_images', { directory });
+        const result = await invoke<PreviewImagesResult>('get_preview_images', { directory });
         return {
             allImages: toAssetUrls(result.allImages),
             totalCount: result.totalCount,
         };
     },
 
-    applyConfig: (config: any) =>
+    applyConfig: (config: ScreensaverConfig) =>
         invoke('apply_config', { newConfig: config }).then(() => {}),
 
-    saveConfig: (config: any) =>
+    saveConfig: (config: ScreensaverConfig) =>
         invoke('save_config', { newConfig: config }).then(() => {}),
 
     closeConfigWindow: () => {

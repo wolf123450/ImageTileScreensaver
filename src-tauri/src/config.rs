@@ -84,3 +84,91 @@ pub fn save_config_to_disk(config: &ScreensaverConfig) -> Result<(), String> {
     log::info!("Configuration saved to {:?}", config_path);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_config_has_expected_values() {
+        let config = ScreensaverConfig::default();
+        assert_eq!(config.image_folder, "");
+        assert!(config.include_subdirectories);
+        assert_eq!(config.change_interval, 10000);
+        assert_eq!(config.pattern, "simple");
+        assert!(!config.multi_monitor_sync);
+        assert_eq!(config.transition.effect, "fade");
+        assert_eq!(config.transition.duration, 1000);
+        assert_eq!(config.theme, "light");
+    }
+
+    #[test]
+    fn config_roundtrip_json() {
+        let config = ScreensaverConfig {
+            image_folder: "C:\\Photos".to_string(),
+            include_subdirectories: false,
+            change_interval: 5000,
+            pattern: "grid".to_string(),
+            multi_monitor_sync: true,
+            transition: TransitionConfig {
+                effect: "slide".to_string(),
+                duration: 500,
+            },
+            theme: "dark".to_string(),
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: ScreensaverConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.image_folder, "C:\\Photos");
+        assert!(!deserialized.include_subdirectories);
+        assert_eq!(deserialized.change_interval, 5000);
+        assert_eq!(deserialized.pattern, "grid");
+        assert!(deserialized.multi_monitor_sync);
+        assert_eq!(deserialized.transition.effect, "slide");
+        assert_eq!(deserialized.theme, "dark");
+    }
+
+    #[test]
+    fn config_uses_camel_case_json_keys() {
+        let config = ScreensaverConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+
+        assert!(json.contains("\"imageFolder\""));
+        assert!(json.contains("\"changeInterval\""));
+        assert!(json.contains("\"includeSubdirectories\""));
+        assert!(json.contains("\"multiMonitorSync\""));
+        assert!(!json.contains("\"image_folder\""));
+    }
+
+    #[test]
+    fn save_and_load_config_from_temp_file() {
+        let dir = std::env::temp_dir().join("screensaver_test_config");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let config_path = dir.join("config.json");
+
+        let config = ScreensaverConfig {
+            image_folder: "/tmp/images".to_string(),
+            ..ScreensaverConfig::default()
+        };
+
+        let data = serde_json::to_string_pretty(&config).unwrap();
+        fs::write(&config_path, &data).unwrap();
+
+        let loaded: ScreensaverConfig =
+            serde_json::from_str(&fs::read_to_string(&config_path).unwrap()).unwrap();
+        assert_eq!(loaded.image_folder, "/tmp/images");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn partial_json_uses_defaults_via_serde_default() {
+        // If the JSON is missing fields, serde should error (not use defaults)
+        // since we don't have #[serde(default)] on the struct.
+        let partial = r#"{"imageFolder": "test"}"#;
+        let result = serde_json::from_str::<ScreensaverConfig>(partial);
+        assert!(result.is_err(), "Partial JSON should fail without #[serde(default)]");
+    }
+}

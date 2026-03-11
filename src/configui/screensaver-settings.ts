@@ -1,9 +1,12 @@
+import '../types';
+import type { ScreensaverConfig } from '../types';
+
 interface ConfigValues {
     changeInterval: number;
     imageDirectory: string;
     includeSubdirectories: boolean;
     pattern: string;
-    patternOptions?: any; // Add patternOptions property
+    patternOptions?: { rows?: number; cols?: number; density?: number };
     multiMonitorSync: boolean;
     transitionEffect: string;
     transitionDuration: number;
@@ -67,7 +70,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateUIFromConfig(savedConfig);
     } catch (error) {
         console.error('Error loading configuration:', error);
-        showErrorMessage('Failed to load configuration settings.');
+        if (window.electronAPI) {
+            showErrorMessage('Failed to load configuration settings.');
+        } else {
+            console.warn('Running outside Tauri — using default configuration values.');
+        }
     }
 });
 
@@ -156,7 +163,7 @@ function setupEventListeners(): void {
 }
 
 // Update UI with loaded configuration
-function updateUIFromConfig(savedConfig: any): void {
+function updateUIFromConfig(savedConfig: ScreensaverConfig): void {
     if (savedConfig.changeInterval) {
         changeIntervalInput.value = (savedConfig.changeInterval / 1000).toString(); // Convert ms to seconds
     }

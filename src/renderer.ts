@@ -1,14 +1,7 @@
-// This file should augment the properties of the `Window` with the type of the
-// `ContextBridgeApi` from `Electron.contextBridge` declared in `src/preload.ts`.
-import type { ContextBridgeApi } from './preload';
+import './types';
 import { Pattern } from './patterns';
 import { PatternFactory } from './patterns/pattern-factory';
-
-declare global {
-  interface Window {
-    electronAPI: ContextBridgeApi
-  }
-}
+import type { ScreensaverConfig } from './types';
 
 // Image array to store all loaded images
 let images: string[] = [];
@@ -149,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Apply the pattern specified in the configuration
-async function applyConfiguredPattern(config: any) {
+async function applyConfiguredPattern(config: ScreensaverConfig) {
   const container = document.getElementById('image-container');
   if (!container || images.length === 0) return;
   
