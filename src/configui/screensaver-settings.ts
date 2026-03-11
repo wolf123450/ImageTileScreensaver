@@ -3,6 +3,7 @@ interface ConfigValues {
     imageDirectory: string;
     includeSubdirectories: boolean;
     pattern: string;
+    patternOptions?: any; // Add patternOptions property
     multiMonitorSync: boolean;
     transitionEffect: string;
     transitionDuration: number;
@@ -172,6 +173,46 @@ function updateUIFromConfig(savedConfig: any): void {
     
     if (savedConfig.pattern) {
         selectPattern(savedConfig.pattern);
+    }
+    
+    // Initialize pattern-specific controls based on saved values
+    if (savedConfig.patternOptions) {
+        // Handle specific pattern options if they exist in the configuration
+        switch (savedConfig.pattern) {
+            case 'grid':
+                const gridRows = document.getElementById('grid-rows') as HTMLInputElement;
+                const gridCols = document.getElementById('grid-cols') as HTMLInputElement;
+                
+                if (gridRows && savedConfig.patternOptions.rows) {
+                    gridRows.value = savedConfig.patternOptions.rows.toString();
+                }
+                
+                if (gridCols && savedConfig.patternOptions.cols) {
+                    gridCols.value = savedConfig.patternOptions.cols.toString();
+                }
+                break;
+                
+            case 'mosaic':
+                const mosaicDensity = document.getElementById('mosaic-density') as HTMLInputElement;
+                const densityValue = document.getElementById('mosaic-density-value');
+                
+                if (mosaicDensity && savedConfig.patternOptions.density !== undefined) {
+                    mosaicDensity.value = savedConfig.patternOptions.density.toString();
+                    
+                    if (densityValue) {
+                        let densityText = 'Medium';
+                        const val = savedConfig.patternOptions.density;
+                        
+                        if (val <= 3) densityText = 'Low';
+                        else if (val >= 8) densityText = 'High';
+                        
+                        densityValue.textContent = densityText;
+                    }
+                }
+                break;
+                
+            // Handle other patterns as needed
+        }
     }
     
     if (savedConfig.multiMonitorSync !== undefined) {
@@ -549,7 +590,7 @@ function loadPatternOptions(pattern: string): void {
 
 // Get configuration values from the UI
 function getConfigFromUI(): ConfigValues {
-    return {
+    const baseConfig = {
         changeInterval: Number(changeIntervalInput.value) || 10,
         imageDirectory: imageDirectoryInput.value,
         includeSubdirectories: includeSubdirectoriesCheckbox.checked,
@@ -558,7 +599,41 @@ function getConfigFromUI(): ConfigValues {
         transitionEffect: transitionEffectSelect.value,
         transitionDuration: Number(transitionDurationInput.value) || 1000,
         theme: config.theme,
-        imageFitStyle: imageFitStyleSelect.value // Get image fit style from UI
+        imageFitStyle: imageFitStyleSelect.value 
+    };
+    
+    // Add pattern-specific options
+    let patternOptions = {};
+    
+    switch (config.pattern) {
+        case 'grid':
+            const gridRows = document.getElementById('grid-rows') as HTMLInputElement;
+            const gridCols = document.getElementById('grid-cols') as HTMLInputElement;
+            
+            if (gridRows && gridCols) {
+                patternOptions = {
+                    rows: Number(gridRows.value) || 2,
+                    cols: Number(gridCols.value) || 3
+                };
+            }
+            break;
+            
+        case 'mosaic':
+            const mosaicDensity = document.getElementById('mosaic-density') as HTMLInputElement;
+            
+            if (mosaicDensity) {
+                patternOptions = {
+                    density: Number(mosaicDensity.value) || 5
+                };
+            }
+            break;
+            
+        // Add cases for other patterns as they are implemented
+    }
+    
+    return {
+        ...baseConfig,
+        patternOptions
     };
 }
 
@@ -572,13 +647,14 @@ async function applyChanges(): Promise<void> {
             includeSubdirectories: newConfig.includeSubdirectories,
             changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
             pattern: newConfig.pattern,
+            patternOptions: newConfig.patternOptions,
             multiMonitorSync: newConfig.multiMonitorSync,
             transition: {
                 effect: newConfig.transitionEffect,
                 duration: newConfig.transitionDuration
             },
             theme: newConfig.theme,
-            imageFitStyle: newConfig.imageFitStyle // Add image fit style to config object
+            imageFitStyle: newConfig.imageFitStyle 
         });
         
         showSuccessMessage('Settings applied successfully');
@@ -598,13 +674,14 @@ async function saveChanges(): Promise<void> {
             includeSubdirectories: newConfig.includeSubdirectories,
             changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
             pattern: newConfig.pattern,
+            patternOptions: newConfig.patternOptions,
             multiMonitorSync: newConfig.multiMonitorSync,
             transition: {
                 effect: newConfig.transitionEffect,
                 duration: newConfig.transitionDuration
             },
             theme: newConfig.theme,
-            imageFitStyle: newConfig.imageFitStyle // Add image fit style to config object
+            imageFitStyle: newConfig.imageFitStyle 
         });
         
         showSuccessMessage('Settings saved successfully');
@@ -625,13 +702,14 @@ async function saveAndClose(): Promise<void> {
             includeSubdirectories: newConfig.includeSubdirectories,
             changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
             pattern: newConfig.pattern,
+            patternOptions: newConfig.patternOptions,
             multiMonitorSync: newConfig.multiMonitorSync,
             transition: {
                 effect: newConfig.transitionEffect,
                 duration: newConfig.transitionDuration
             },
             theme: newConfig.theme,
-            imageFitStyle: newConfig.imageFitStyle // Add image fit style to config object
+            imageFitStyle: newConfig.imageFitStyle 
         });
         
         // Close window immediately without showing popup

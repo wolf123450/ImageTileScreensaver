@@ -1,6 +1,7 @@
 import { DisplayInfo } from '../display';
 import { SimplePattern } from './simple-pattern';
 import { GridPattern } from './grid-pattern';
+import { MosaicPattern } from './mosaic-pattern';
 
 // Core pattern interface
 export interface Pattern {
@@ -40,9 +41,11 @@ export interface ImageLayout {
 // Export pattern implementations
 export { SimplePattern } from './simple-pattern';
 export { GridPattern } from './grid-pattern';
+export { MosaicPattern } from './mosaic-pattern';
 
 // Create a registry of available patterns
 export const patterns: Record<string, Pattern> = {
   simple: new SimplePattern(),
-  grid: new GridPattern()
+  grid: new GridPattern(),
+  mosaic: new MosaicPattern()
 };

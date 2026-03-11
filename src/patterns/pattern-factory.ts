@@ -1,6 +1,7 @@
 import { Pattern, patterns } from './index';
 import { SimplePattern } from './simple-pattern';
 import { GridPattern } from './grid-pattern';
+import { MosaicPattern } from './mosaic-pattern';
 
 /**
  * Factory for creating pattern instances
@@ -20,6 +21,7 @@ export class PatternFactory {
     // Create a new instance of the pattern to avoid shared state
     if (name === 'simple') return new SimplePattern();
     if (name === 'grid') return new GridPattern();
+    if (name === 'mosaic') return new MosaicPattern();
     
     // Fallback
     return new SimplePattern();

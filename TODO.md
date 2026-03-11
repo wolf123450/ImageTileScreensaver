@@ -1,172 +1,143 @@
 # Image Tile Screensaver - TODO List
 
-This document outlines features and improvements that need to be implemented or enhanced in the Image Tile Screensaver project. Items are organized by priority and category, with a ranking from 1-10 (10 being highest priority for MVP and user value).
+> Last reviewed: 2026-03-10
 
-## High Priority
+This document tracks planned features, improvements, and technical debt. Items marked ✅ are complete, ⬜ are pending. Priority tiers indicate suggested implementation order.
 
-### Core Functionality
-- [ ] **CF-1:** Complete the implementation of the Windows screensaver preview mode (`/p` command line argument) [9/10]
-- [ ] **CF-2:** Add a configuration dialog for the Windows screensaver settings (`/c` command line argument) [10/10]
-  #### Implementation Steps:
-  1. [x] **CF-2.1:** Create Configuration UI Components:
-     - Design and implement a configuration dialog using HTML/CSS/TS in a separate window
-     - Create form elements for all configurable settings (image directory, change interval, patterns, etc.)
-     - Add validation for user inputs (directory exists, interval is a positive number, etc.)
-  
-  2. [x] **CF-2.2:** Add Configuration Window Management:
-     - Create a new electron BrowserWindow specifically for configuration
-     - Implement proper window sizing, positioning, and styling for a dialog
-     - Add modal behavior to block interaction with other windows when config is open
-  
-  3. [x] **CF-2.3:** Command Line Argument Handling:
-     - Enhance the existing `/c` handler in `main.ts` to create and show the config window
-     - Add proper argument parsing for any additional parameters
-     - Implement Windows-specific behavior for configuration dialog integration
-  
-  4. [x] **CF-2.4:** Configuration Persistence:
-     - Create a configuration file format (JSON) to store user settings
-     - Implement read/write functions for the configuration file
-     - Add functions to apply configuration changes in real-time
-  
-  5. [x] **CF-2.5:** Configuration API:
-     - Extend the IPC interface in `preload.ts` to expose configuration-related functions
-     - Add methods for saving, loading, and validating configuration
-     - Create event emitters for configuration changes
-  
-  6. [x] **CF-2.6:** UI/UX Refinement:
-     - Add proper error handling with user-friendly messages
-     - Implement "Apply", "Save", and "Cancel" buttons with appropriate behaviors
-     - Create a directory browser dialog for selecting image folders
-     - Add preview functionality for pattern selection
+---
 
-  7. [ ] **CF-2.7:** Testing and Validation:
-     - Test the configuration dialog across different Windows versions
-     - Verify that settings are correctly saved and loaded
-     - Ensure proper behavior when launched from Windows screensaver settings
-     - Test handling of invalid configuration values
+## Milestone 1: Core MVP Polish
 
-- [ ] **CF-3:** Implement persistent configuration storage (currently using default config only) [8/10]
-- [ ] **CF-4:** Create a proper error handling system for missing image directories [7/10]
-- [ ] **CF-5:** Add recursive directory scanning for images (currently only top-level images are found) [6/10]
+These items are needed to make the current Electron build production-ready.
 
-### Patterns
-- [ ] **PAT-1:** Implement additional pattern generators beyond the simple pattern: [7/10]
-  - [ ] **PAT-1.1:** Grid pattern: Display images in a configurable grid layout [8/10]
-  - [ ] **PAT-1.2:** Mosaic pattern: Create a mosaic effect with images of different sizes [6/10]
-  - [ ] **PAT-1.3:** Sliding pattern: Images that move across the screen [5/10]
-  - [ ] **PAT-1.4:** Random pattern: Display images in random positions and sizes [7/10]
-- [ ] **PAT-2:** Add pattern configuration options in the UI [8/10]
+### 1.1 Configuration & Persistence
+- [x] Configuration dialog via `/c` argument (UI, window management, IPC, persistence, directory browser)
+- [x] JSON config file read/write (`config.ts` with `loadConfig`/`saveConfig`)
+- [ ] **CF-1:** Recursive/subdirectory image scanning (config flag exists but `getImageFiles` only reads top-level)
+- [ ] **CF-2:** Proper error handling for missing/invalid image directories (user-facing toast notifications instead of `alert()`)
+- [ ] **CF-3:** Validate and migrate saved config on schema changes (version field + merge strategy)
 
-### User Interface
-- [ ] **UI-1:** Build a configuration UI accessible from the screensaver settings [10/10]
-  #### Implementation Steps:
-  1. [x] **UI-1.1:** Design UI Architecture:
-     - Create wireframes for the configuration UI with all needed components
-     - Define component hierarchy and state management approach
-     - Plan responsive layout to handle different screen sizes
+### 1.2 Screensaver Integration (Windows)
+- [ ] **SCR-1:** Implement preview mode (`/p <HWND>`) — render into the Windows preview thumbnail
+- [x] `.scr` file generation script (`create-screensaver.js`)
+- [ ] **SCR-2:** Test config dialog when launched from Windows Screen Saver Settings panel
+- [ ] **SCR-3:** Installer that copies screensaver files + registers `.scr` (NSIS or similar)
 
-  2. [x] **UI-1.2:** Create Base UI Framework:
-     - Set up HTML structure with appropriate container elements
-     - Implement CSS styling with a cohesive design system
-     - Add dark/light mode support for system integration
+### 1.3 Patterns
+- [x] Simple pattern (single image, timed rotation)
+- [x] Grid pattern (configurable rows × cols, staggered refresh)
+- [x] Mosaic pattern (density-based variable-size cells)
+- [ ] **PAT-1:** Random pattern — images at random positions/sizes with optional overlap
+- [ ] **PAT-2:** Sliding/carousel pattern — images that scroll across the screen
+- [x] Pattern-specific options in config UI (grid size, mosaic density)
 
-  3. [x] **UI-1.3:** Implement Core UI Components:
-     - Create a sidebar navigation for different setting categories
-     - Build form components for all configurable options
-     - Implement tabbed interface for organizing complex settings
-     - Add custom UI controls for specialized settings (interval sliders, color pickers, etc.)
+### 1.4 Settings UI
+- [x] Tabbed config UI (General, Images, Patterns, Advanced)
+- [x] Dark/light theme toggle with CSS custom properties
+- [x] Image preview with pagination
+- [x] Pattern visual selectors
+- [ ] **UI-1:** Replace `alert()` messages with inline toast/snackbar notifications
+- [ ] **UI-2:** Add "Reset to Defaults" button
 
-  4. [x] **UI-1.4:** Directory Selection Component:
-     - Create a directory browser component to select image sources
-     - Add support for multiple directories with priority settings
-     - Implement directory validation and permission checking
-     - Show directory statistics (number of images, types, total size)
+---
 
-  5. [x] **UI-1.5:** Pattern Configuration Components:
-     - Create visual selectors for different pattern types
-     - Build pattern-specific configuration panels
-     - Implement live preview functionality for patterns
-     - Create pattern parameter controls (grid size, animation speed, etc.)
+## Milestone 2: Quality & Performance
 
-  6. [ ] **UI-1.6:** Multi-monitor Configuration:
-     - Implement monitor detection and display
-     - Create UI for per-monitor settings
-     - Add visual representation of the user's monitor layout
-     - Support dragging and dropping settings between monitors
+### 2.1 Image Pipeline
+- [ ] **IMG-1:** Image preloading — load next N images in background for smoother transitions
+- [ ] **IMG-2:** Image caching layer (in-memory LRU cache to avoid re-reading disk)
+- [ ] **IMG-3:** Lazy loading / virtual collection for directories with 10k+ images
+- [ ] **IMG-4:** Image filtering (by date, type, size, aspect ratio)
 
-  7. [x] **UI-1.7:** Settings Persistence Integration:
-     - Connect UI components to configuration read/write functions
-     - Implement real-time validation and feedback
-     - Add "reset to defaults" functionality
-     - Create import/export capabilities for sharing configurations
+### 2.2 Transitions
+- [ ] **TR-1:** Fade transition (CSS opacity — partially implemented in patterns, needs formal API)
+- [ ] **TR-2:** Slide transition
+- [ ] **TR-3:** Zoom/Ken Burns transition
+- [ ] **TR-4:** Configurable per-pattern transition settings
 
-  8. [x] **UI-1.8:** Accessibility and Usability:
-     - Implement keyboard navigation throughout the UI
-     - Add tooltips and help text for complex options
-     - Ensure proper contrast and text sizing
-     - Support screen readers and assistive technologies
+### 2.3 Performance
+- [ ] **PERF-1:** Background image processing (Web Worker or offscreen canvas) to avoid UI thread blocking
+- [ ] **PERF-2:** Memory profiling & optimization for large collections (release image DOM nodes aggressively)
+- [ ] **PERF-3:** GPU-accelerated transitions via CSS `will-change` / `transform`
 
-  9. [ ] **UI-1.9:** Testing and Refinement:
-     - Conduct usability testing with different user scenarios
-     - Test across multiple operating systems and window managers
-     - Verify that all settings correctly affect the screensaver behavior
-     - Optimize performance for smooth interactions
+### 2.4 Multi-Monitor
+- [ ] **MM-1:** Per-monitor pattern/settings configuration
+- [ ] **MM-2:** Synchronized display mode across monitors
+- [ ] **MM-3:** Monitor-spanning images (single image stretched across 2+ displays)
+- [ ] **MM-4:** Dynamic monitor hotplug handling
+- [ ] **MM-5:** Multi-monitor configuration UI (visual monitor layout editor)
 
-- [ ] **UI-2:** Create a standalone settings application for non-Windows platforms [6/10]
-- [x] **UI-3:** Add visual feedback during image loading [7/10]
-- [x] **UI-4:** Implement a preview panel in the configuration dialog [9/10]
+---
 
-## Medium Priority
+## Milestone 3: Technical Debt & Code Quality
 
-### Image Handling
-- [ ] **IMG-1:** Add support for image metadata (EXIF) display options [4/10]
-- [ ] **IMG-2:** Implement image caching for faster loading of large collections [7/10]
-- [ ] **IMG-3:** Add image preloading to improve transition smoothness [8/10]
-- [ ] **IMG-4:** Support for online image sources (URLs, cloud storage) [5/10]
-- [ ] **IMG-5:** Add image filtering options (by date, type, size, etc.) [4/10]
-- [ ] **IMG-6:** Implement a virtual image collection with lazy loading for large directories [6/10]
+### 3.1 Architecture Fixes
+- [ ] **TD-1:** Remove dead code in `display.ts` (unused `createWindow`, hardcoded `getAllDisplays` placeholder)
+- [ ] **TD-2:** Unify config types — `ScreensaverConfig` (config.ts) vs `Config` (pattern-config.ts) vs `ConfigValues` (screensaver-settings.ts) should be one shared type
+- [ ] **TD-3:** Fix webpack targets — main entry should use `electron-main`, preload should use `electron-preload` (currently all use `electron-renderer`)
+- [ ] **TD-4:** Replace deprecated `url.format()` with `new URL()` / `pathToFileURL()`
+- [ ] **TD-5:** Replace `promisify(fs.readdir/stat)` with `fs.promises` (already used elsewhere in same file)
+- [ ] **TD-6:** Extract shared image-replacement logic from GridPattern and MosaicPattern into a base class or utility
+- [ ] **TD-6b:** Clean up PatternFactory — remove unused `patterns` registry in `index.ts` (factory ignores it and creates instances via if/else); use the registry or replace with a simple map-based lookup
 
-### Transitions
-- [ ] **TR-1:** Add transition effects between images: [7/10]
-  - [ ] **TR-1.1:** Fade transitions [8/10]
-  - [ ] **TR-1.2:** Slide transitions [6/10]
-  - [ ] **TR-1.3:** Zoom transitions [5/10]
-  - [ ] **TR-1.4:** Custom transitions [3/10]
-- [ ] **TR-2:** Create a transition effects API for extensibility [4/10]
-- [ ] **TR-3:** Allow per-pattern transition settings [5/10]
+### 3.2 Security
+- [ ] **SEC-1:** Remove `nodeIntegration: true` from screensaver BrowserWindow (use preload + contextIsolation like config window)
+- [ ] **SEC-2:** Eliminate `any` types in IPC API (`getConfig`, `applyConfig`, `saveConfig` in preload.ts) — use shared `ScreensaverConfig` type
 
-### Performance
-- [ ] **PERF-1:** Optimize image loading and rendering for better performance [8/10]
-- [ ] **PERF-2:** Implement background image processing to avoid UI freezes [7/10]
-- [ ] **PERF-3:** Add hardware acceleration options for transitions [5/10]
-- [ ] **PERF-4:** Optimize memory usage for large image collections [7/10]
+### 3.3 Typing & Linting
+- [ ] **TD-7:** Add/restore `.eslintrc` config (lint script exists but config file is missing)
+- [ ] **TD-8:** Replace all `any` types with proper interfaces throughout codebase
+- [ ] **TD-9:** Move inline styles in patterns/renderer to CSS classes
 
-## Low Priority
+### 3.4 Testing
+- [ ] **TEST-1:** Unit tests for config load/save/merge
+- [ ] **TEST-2:** Unit tests for pattern layout algorithms (especially mosaic cell placement)
+- [ ] **TEST-3:** Integration test for screensaver command-line argument parsing
+- [ ] **TEST-4:** E2E test for config dialog save → screensaver reads new config
 
-### Multi-monitor Features
-- [ ] **MM-1:** Add synchronized display modes across all monitors [6/10]
-- [ ] **MM-2:** Implement per-monitor settings (different patterns on different monitors) [5/10]
-- [ ] **MM-3:** Support for monitor-spanning images [4/10]
-- [ ] **MM-4:** Handle dynamic monitor configuration changes [6/10]
+### 3.5 Dependencies
+- [ ] **DEP-1:** Update Electron from v26 to current LTS (v33+)
+- [ ] **DEP-2:** Remove duplicate `dotenv` from both `dependencies` and `devDependencies`
+- [x] Logging system implemented (Winston with file rotation)
 
-### Miscellaneous
-- [ ] **MISC-1:** Add localization support for multiple languages [3/10]
-- [ ] **MISC-2:** Create a plugin system for custom patterns and transitions [2/10]
-- [ ] **MISC-3:** Add keyboard shortcuts for manual navigation [4/10]
-- [ ] **MISC-4:** Implement a slideshow mode with captions [5/10]
-- [ ] **MISC-5:** Add screen blanking options for energy saving [6/10]
-- [ ] **MISC-6:** Create a screensaver packaging system for macOS and Linux [4/10]
+---
 
-### Distribution and Installation
-- [ ] **DIST-1:** Complete the Windows .scr file generation script [9/10]
-- [ ] **DIST-2:** Create installer packages for Windows, macOS, and Linux [7/10]
-- [ ] **DIST-3:** Add auto-update functionality [3/10]
-- [ ] **DIST-4:** Create documentation for end users [8/10]
+## Milestone 4: Tauri Migration (Exploratory)
 
-## Technical Debt
-- [ ] **TD-1:** Improve code documentation and comments [6/10]
-- [ ] **TD-2:** Add unit tests for core functionality [7/10]
-- [ ] **TD-3:** Create integration tests for pattern generators [5/10]
-- [ ] **TD-4:** Refactor renderer.ts to separate concerns more clearly [7/10]
-- [ ] **TD-5:** Add stronger typing throughout the codebase [6/10]
-- [ ] **TD-6:** Implement logging system for better debugging [5/10]
+Switching from Electron to Tauri would significantly reduce binary size (~150MB → ~10MB) and memory footprint — both critical for a screensaver that runs in the background.
+
+### Feasibility Assessment
+- **Frontend**: HTML/CSS/JS can be reused almost entirely (Tauri uses system webview)
+- **Backend**: All Node.js main-process code (main.ts, config.ts, logger.ts, image scanning) must be rewritten in Rust
+- **IPC**: Electron IPC → Tauri commands/events (different API, same concept)
+- **Preload**: Eliminated — Tauri uses `@tauri-apps/api` invoke from frontend
+- **Multi-window**: Tauri supports multi-window; per-monitor fullscreen windows are possible
+- **Screensaver .scr**: Tauri produces a single `.exe` — rename-to-`.scr` approach should work identically
+- **Risk**: WebView2 runtime required on Windows (pre-installed on Win 10 21H2+ and Win 11; installer can bundle it)
+- **Effort estimate**: Medium-large. ~60% of the codebase needs rewriting (all backend). Frontend is ~90% reusable.
+
+### Migration Steps (if pursued)
+- [ ] **TAURI-1:** Create Tauri project scaffold, verify multi-window + fullscreen on multiple monitors
+- [ ] **TAURI-2:** Port config read/write to Rust (serde + JSON file)
+- [ ] **TAURI-3:** Port image directory scanning to Rust (walkdir crate for recursive scanning)
+- [ ] **TAURI-4:** Port IPC commands (get-images, get-config, save-config, browse-directory, etc.)
+- [ ] **TAURI-5:** Port screensaver argument handling (`/s`, `/c`, `/p`) in Rust main
+- [ ] **TAURI-6:** Port logging to Rust (tracing crate)
+- [ ] **TAURI-7:** Adapt frontend JS to use `@tauri-apps/api` instead of `window.electronAPI`
+- [ ] **TAURI-8:** Test `.scr` rename + Windows screensaver integration
+- [ ] **TAURI-9:** Binary size and memory benchmarking vs Electron build
+
+---
+
+## Milestone 5: Nice-to-Have / Future
+
+- [ ] **MISC-1:** EXIF metadata display overlay
+- [ ] **MISC-2:** Online image sources (URLs, cloud storage)
+- [ ] **MISC-3:** Slideshow mode with captions
+- [ ] **MISC-4:** Screen blanking / energy saving timer
+- [ ] **MISC-5:** Keyboard shortcuts for manual image navigation (in non-screensaver mode)
+- [ ] **MISC-6:** Cross-platform screensaver packaging (macOS, Linux)
+- [ ] **MISC-7:** Localization / i18n support
+- [ ] **MISC-8:** Plugin system for custom patterns and transitions
+- [ ] **MISC-9:** Auto-update mechanism
+- [ ] **MISC-10:** End-user documentation / help pages
