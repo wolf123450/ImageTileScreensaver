@@ -94,7 +94,7 @@ mod tests {
         fs::write(dir.join("photo.JPG"), b"fake").unwrap();
         fs::write(dir.join("image.Png"), b"fake").unwrap();
 
-        let (images, count) = scan_images(dir.to_str().unwrap(), false);
+        let (_images, count) = scan_images(dir.to_str().unwrap(), false);
         assert_eq!(count, 2);
 
         let _ = fs::remove_dir_all(&dir);
