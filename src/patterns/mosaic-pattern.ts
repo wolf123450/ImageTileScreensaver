@@ -379,6 +379,7 @@ export class MosaicPattern implements Pattern {
 
     return new Promise<void>((resolve) => {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;

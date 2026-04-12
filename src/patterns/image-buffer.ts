@@ -113,6 +113,7 @@ export class ImageBuffer {
 
     return new Promise<void>((resolve) => {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         let color: RGB;
         if (cached) {
