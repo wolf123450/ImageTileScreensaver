@@ -2,8 +2,9 @@ import { Pattern } from './index';
 import { PlacementEngine, createPriorityFn } from './placement-engine';
 import { ImageBuffer } from './image-buffer';
 import { computeTileDimensions } from './color-utils';
-import type { ScreensaverConfig } from '../types';
+import type { ScreensaverConfig, ColorCacheData } from '../types';
 import type { PlacedTile } from './placement-engine';
+import type { RGB } from './color-utils';
 
 /** Minimum tile dimension in screen-space pixels. Tiles smaller than this are imperceptible. */
 export const MIN_TILE_SCREEN_PX = 16;
@@ -60,6 +61,7 @@ export class MosaicPattern implements Pattern {
   private holdTimer: number | null = null;
   private fadeTimer: number | null = null;
   private imageUrls: string[] = [];
+  private colorCache: Map<string, { avgColor: RGB; domColor: RGB; }> | null = null;
   private viewportWidth: number = 0;
   private viewportHeight: number = 0;
 
@@ -119,6 +121,7 @@ export class MosaicPattern implements Pattern {
     this.referenceCtx = null;
     this.tilesPlaced = 0;
     this.currentScale = 1;
+    this.colorCache = null;
   }
 
   private async startCycle(): Promise<void> {
@@ -145,11 +148,41 @@ export class MosaicPattern implements Pattern {
 
     // Init image buffer
     this.imageBuffer = new ImageBuffer();
+
+    // Load color cache if photomosaic mode is active
+    // Cache is keyed by raw filesystem paths, but ImageBuffer uses asset URLs.
+    // We need both raw paths and asset URLs to build the lookup.
+    if (this.config.referenceImage || this.config.referenceImageDir) {
+      try {
+        const api = (window as any).electronAPI;
+        if (api?.readColorCache && api?.getRawImagePaths) {
+          const [cacheData, rawPaths]: [ColorCacheData, string[]] = await Promise.all([
+            api.readColorCache(),
+            api.getRawImagePaths(),
+          ]);
+          if (cacheData.entries && Object.keys(cacheData.entries).length > 0) {
+            this.colorCache = new Map();
+            for (let i = 0; i < rawPaths.length && i < this.imageUrls.length; i++) {
+              const entry = cacheData.entries[rawPaths[i]];
+              if (entry) {
+                this.colorCache.set(this.imageUrls[i], {
+                  avgColor: this.hexToRgb(entry.avgColor),
+                  domColor: this.hexToRgb(entry.domColor),
+                });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load color cache, falling back to on-the-fly computation', e);
+      }
+    }
+
     this.imageBuffer.init(this.imageUrls, this.viewportWidth, this.viewportHeight, {
       tileAreaPercent: this.config.tileAreaPercent,
       bufferSize: this.config.bufferSize,
       colorMatchStrategy: this.config.colorMatchStrategy,
-    });
+    }, this.colorCache ?? undefined);
 
     // Load reference image if photomosaic mode
     if (this.config.referenceImage || this.config.referenceImageDir) {
@@ -362,5 +395,10 @@ export class MosaicPattern implements Pattern {
       };
       img.src = refUrl;
     });
+  }
+
+  private hexToRgb(hex: string): RGB {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
 }
