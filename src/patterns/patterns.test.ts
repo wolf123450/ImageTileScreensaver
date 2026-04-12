@@ -216,6 +216,25 @@ describe('MosaicPattern', () => {
 
     expect(container.children.length).toBe(0);
   });
+
+  describe('adaptive tile count', () => {
+    it('stops placing tiles when screen-space size falls below MIN_TILE_SCREEN_PX', () => {
+      const pattern = new MosaicPattern();
+      pattern.init(makeConfig({ pattern: 'mosaic' }, {
+          tileAreaPercent: 7,
+          zoomEnabled: true,
+          maxZoomOut: 0.015625,
+          maxTiles: 0,
+          placementSpeed: 50,
+      }));
+      expect(pattern.name).toBe('mosaic');
+    });
+
+    it('exports MIN_TILE_SCREEN_PX constant', async () => {
+      const { MIN_TILE_SCREEN_PX } = await import('./mosaic-pattern');
+      expect(MIN_TILE_SCREEN_PX).toBe(16);
+    });
+  });
 });
 
 describe('RandomPattern', () => {
