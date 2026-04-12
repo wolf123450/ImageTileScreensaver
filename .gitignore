@@ -50,6 +50,10 @@ Thumbs.db
 coverage/
 *.lcov
 
+# Playwright artifacts
+playwright-report/
+test-results/
+
 # Cache directories
 .npm/
 .cache/

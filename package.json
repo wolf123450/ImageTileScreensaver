@@ -11,6 +11,8 @@
     "watch": "webpack --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:headed": "npm run build && playwright test --headed",
     "tauri:dev": "cargo tauri dev",
     "tauri:dev:config": "cargo tauri dev -- -- /c",
     "tauri:build": "cargo tauri build"
@@ -23,8 +25,10 @@
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.68",
+    "@playwright/test": "^1.59.1",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.8.1",
+    "http-server": "^14.1.1",
     "jsdom": "^26.1.0",
     "rimraf": "^5.0.10",
     "style-loader": "^3.3.3",

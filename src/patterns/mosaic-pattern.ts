@@ -1,5 +1,6 @@
 import { Pattern } from './index';
 import { replaceImageInCell } from './image-utils';
+import type { ScreensaverConfig } from '../types';
 
 export interface MosaicPatternConfig {
   density: number;
@@ -22,8 +23,13 @@ export class MosaicPattern implements Pattern {
   private refreshTimers: number[] = [];
   private mosaicCells: HTMLDivElement[] = [];
   
-  init(config: Partial<MosaicPatternConfig>): void {
-    this.config = { ...this.config, ...config };
+  init(config: ScreensaverConfig): void {
+    this.config = {
+      ...this.config,
+      imageFitStyle: config.imageFitStyle,
+      changeInterval: config.changeInterval,
+      density: config.patternOptions?.density ?? this.config.density,
+    };
   }
   
   apply(container: HTMLElement, imageUrls: string[]): void {

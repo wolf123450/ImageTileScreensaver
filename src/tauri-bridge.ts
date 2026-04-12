@@ -60,4 +60,4 @@ const tauriAPI: ScreensaverAPI = {
 };
 
 // Expose as window.electronAPI so existing code works unchanged
-(window as any).electronAPI = tauriAPI;
+(window as Window).electronAPI = tauriAPI;

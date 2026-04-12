@@ -1,5 +1,6 @@
 import { Pattern } from './index';
 import { replaceImageInCell } from './image-utils';
+import type { ScreensaverConfig } from '../types';
 
 export interface GridPatternConfig {
   rows: number;
@@ -26,8 +27,14 @@ export class GridPattern implements Pattern {
   private refreshTimers: number[] = [];
   private gridCells: HTMLDivElement[] = [];
   
-  init(config: Partial<GridPatternConfig>): void {
-    this.config = { ...this.config, ...config };
+  init(config: ScreensaverConfig): void {
+    this.config = {
+      ...this.config,
+      imageFitStyle: config.imageFitStyle,
+      changeInterval: config.changeInterval,
+      rows: config.patternOptions?.rows ?? this.config.rows,
+      cols: config.patternOptions?.cols ?? this.config.cols,
+    };
   }
   
   apply(container: HTMLElement, imageUrls: string[]): void {

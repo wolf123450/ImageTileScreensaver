@@ -10,6 +10,7 @@
     --border-color: #d3d3d3;
     --success-color: #38b000;
     --error-color: #d90429;
+    --warning-color: #f28f3b;
     --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     --input-bg: #ffffff;
     --preview-bg: #f9f9f9;
@@ -263,6 +264,12 @@ input[type="number"] {
     background-position: center;
 }
 
+.pattern-preview.sliding {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80"><rect x="8" y="25" width="28" height="30" fill="%233a86ff"/><rect x="40" y="20" width="28" height="30" fill="%233a86ff" opacity="0.8"/><rect x="72" y="15" width="20" height="30" fill="%233a86ff" opacity="0.6"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 .image-preview {
     margin-top: 20px;
     border: 1px solid var(--border-color);
@@ -323,6 +330,49 @@ input[type="number"] {
 
 .action-button.success {
     background-color: var(--success-color);
+}
+
+.action-button.warning {
+    background-color: var(--warning-color);
+}
+
+.toast-container {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.toast {
+    min-width: 260px;
+    max-width: 420px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    color: #fff;
+    box-shadow: var(--shadow);
+    animation: toast-in 180ms ease-out;
+}
+
+.toast.success {
+    background-color: var(--success-color);
+}
+
+.toast.error {
+    background-color: var(--error-color);
+}
+
+@keyframes toast-in {
+    from {
+        transform: translateY(8px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* Pagination controls styling */

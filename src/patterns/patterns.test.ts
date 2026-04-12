@@ -3,6 +3,28 @@ import { PatternFactory } from './pattern-factory';
 import { SimplePattern } from './simple-pattern';
 import { GridPattern } from './grid-pattern';
 import { MosaicPattern } from './mosaic-pattern';
+import { RandomPattern } from './random-pattern';
+import { SlidingPattern } from './sliding-pattern';
+import type { PatternOptions, ScreensaverConfig } from '../types';
+
+function makeConfig(overrides: Partial<ScreensaverConfig> = {}, patternOptions: PatternOptions = {}): ScreensaverConfig {
+  return {
+    version: 2,
+    imageFolder: '',
+    includeSubdirectories: true,
+    changeInterval: 60000,
+    pattern: 'simple',
+    patternOptions,
+    multiMonitorSync: false,
+    transition: {
+      effect: 'fade',
+      duration: 500,
+    },
+    theme: 'light',
+    imageFitStyle: 'cover',
+    ...overrides,
+  };
+}
 
 describe('PatternFactory', () => {
   it('returns SimplePattern for "simple"', () => {
@@ -21,6 +43,18 @@ describe('PatternFactory', () => {
     const pattern = PatternFactory.getPattern('mosaic');
     expect(pattern).toBeInstanceOf(MosaicPattern);
     expect(pattern.name).toBe('mosaic');
+  });
+
+  it('returns RandomPattern for "random"', () => {
+    const pattern = PatternFactory.getPattern('random');
+    expect(pattern).toBeInstanceOf(RandomPattern);
+    expect(pattern.name).toBe('random');
+  });
+
+  it('returns SlidingPattern for "sliding"', () => {
+    const pattern = PatternFactory.getPattern('sliding');
+    expect(pattern).toBeInstanceOf(SlidingPattern);
+    expect(pattern.name).toBe('sliding');
   });
 
   it('falls back to SimplePattern for unknown names', () => {
@@ -50,7 +84,7 @@ describe('SimplePattern', () => {
 
   it('creates an img element on apply', () => {
     const pattern = new SimplePattern();
-    pattern.init({ imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig());
     pattern.apply(container, testImages);
 
     const img = container.querySelector('img');
@@ -60,7 +94,7 @@ describe('SimplePattern', () => {
 
   it('does nothing with empty image array', () => {
     const pattern = new SimplePattern();
-    pattern.init({ imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig());
     pattern.apply(container, []);
     expect(container.querySelector('img')).toBeNull();
   });
@@ -68,7 +102,7 @@ describe('SimplePattern', () => {
   it('cleans up interval timer', () => {
     vi.useFakeTimers();
     const pattern = new SimplePattern();
-    pattern.init({ imageFitStyle: 'cover', changeInterval: 1000 });
+    pattern.init(makeConfig({ changeInterval: 1000 }));
     pattern.apply(container, testImages);
 
     // Should have set a timer
@@ -85,7 +119,7 @@ describe('SimplePattern', () => {
 
   it('offsets image by displayId', () => {
     const pattern = new SimplePattern();
-    pattern.init({ imageFitStyle: 'cover', changeInterval: 60000, displayId: 2 });
+    pattern.init({ ...makeConfig(), displayId: 2 } as ScreensaverConfig & { displayId: number });
     pattern.apply(container, testImages);
 
     const img = container.querySelector('img');
@@ -108,7 +142,7 @@ describe('GridPattern', () => {
 
   it('creates a grid of cells', () => {
     const pattern = new GridPattern();
-    pattern.init({ rows: 2, cols: 3, spacing: 4, imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig({ pattern: 'grid' }, { rows: 2, cols: 3 }));
     pattern.apply(container, testImages);
 
     const cells = container.querySelectorAll('div');
@@ -120,7 +154,7 @@ describe('GridPattern', () => {
 
   it('each cell contains an image', () => {
     const pattern = new GridPattern();
-    pattern.init({ rows: 1, cols: 2, spacing: 0, imageFitStyle: 'contain', changeInterval: 60000 });
+    pattern.init(makeConfig({ pattern: 'grid', imageFitStyle: 'contain' }, { rows: 1, cols: 2 }));
     pattern.apply(container, testImages);
 
     const images = container.querySelectorAll('img');
@@ -132,7 +166,7 @@ describe('GridPattern', () => {
 
   it('cleans up timers', () => {
     const pattern = new GridPattern();
-    pattern.init({ rows: 2, cols: 2, spacing: 0, imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig({ pattern: 'grid' }, { rows: 2, cols: 2 }));
     pattern.apply(container, testImages);
     pattern.cleanup();
     // No assertion needed — just verify no error thrown
@@ -154,7 +188,7 @@ describe('MosaicPattern', () => {
 
   it('creates mosaic cells based on density', () => {
     const pattern = new MosaicPattern();
-    pattern.init({ density: 5, imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 5 }));
     pattern.apply(container, testImages);
 
     const cells = container.querySelectorAll('div');
@@ -164,13 +198,13 @@ describe('MosaicPattern', () => {
 
   it('higher density produces more or equal cells', () => {
     const lowPattern = new MosaicPattern();
-    lowPattern.init({ density: 2, imageFitStyle: 'cover', changeInterval: 60000 });
+    lowPattern.init(makeConfig({ pattern: 'mosaic' }, { density: 2 }));
     lowPattern.apply(container, testImages);
     const lowCount = container.querySelectorAll('div').length;
 
     container.innerHTML = '';
     const highPattern = new MosaicPattern();
-    highPattern.init({ density: 9, imageFitStyle: 'cover', changeInterval: 60000 });
+    highPattern.init(makeConfig({ pattern: 'mosaic' }, { density: 9 }));
     highPattern.apply(container, testImages);
     const highCount = container.querySelectorAll('div').length;
 
@@ -179,19 +213,81 @@ describe('MosaicPattern', () => {
 
   it('cleans up timers', () => {
     const pattern = new MosaicPattern();
-    pattern.init({ density: 3, imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 3 }));
     pattern.apply(container, testImages);
     pattern.cleanup();
   });
 
   it('every cell has an image', () => {
     const pattern = new MosaicPattern();
-    pattern.init({ density: 5, imageFitStyle: 'cover', changeInterval: 60000 });
+    pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 5 }));
     pattern.apply(container, testImages);
 
     const cells = container.querySelectorAll('div');
     cells.forEach(cell => {
       expect(cell.querySelector('img')).not.toBeNull();
     });
+  });
+});
+
+describe('RandomPattern', () => {
+  let container: HTMLDivElement;
+  const testImages = ['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'];
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it('creates the requested number of random images', () => {
+    const pattern = new RandomPattern();
+    pattern.init(makeConfig({ pattern: 'random' }, { randomCount: 5, allowOverlap: true }));
+
+    pattern.apply(container, testImages);
+    const imgs = container.querySelectorAll('img');
+    expect(imgs.length).toBe(5);
+  });
+
+  it('cleans up timers', () => {
+    const pattern = new RandomPattern();
+    pattern.init(makeConfig({ pattern: 'random', changeInterval: 1000 }));
+    pattern.apply(container, testImages);
+    pattern.cleanup();
+  });
+});
+
+describe('SlidingPattern', () => {
+  let container: HTMLDivElement;
+  const testImages = ['s1.jpg', 's2.jpg', 's3.jpg'];
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it('creates a sliding image and advances on interval', () => {
+    vi.useFakeTimers();
+
+    const pattern = new SlidingPattern();
+    pattern.init(makeConfig({ pattern: 'sliding', changeInterval: 1000 }));
+    pattern.apply(container, testImages);
+
+    const firstSrc = container.querySelector('img')?.src;
+    vi.advanceTimersByTime(1200);
+    const secondSrc = container.querySelector('img')?.src;
+
+    expect(firstSrc).toBeTruthy();
+    expect(secondSrc).toBeTruthy();
+
+    pattern.cleanup();
+    vi.useRealTimers();
   });
 });

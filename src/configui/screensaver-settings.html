@@ -91,6 +91,10 @@
                             <div class="pattern-preview random"></div>
                             <span>Random</span>
                         </div>
+                        <div class="pattern-option" data-pattern="sliding">
+                            <div class="pattern-preview sliding"></div>
+                            <span>Sliding</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -145,10 +149,13 @@
         <div class="button-container">
             <button id="apply-button" class="action-button">Apply</button>
             <button id="save-button" class="action-button primary">Save</button>
+            <button id="reset-button" class="action-button warning">Reset to Defaults</button>
             <button id="cancel-button" class="action-button">Cancel</button>
             <button id="done-button" class="action-button success">Done</button>
         </div>
     </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     
     <script>
       // Load Tauri bridge synchronously if running under Tauri (no Electron preload)

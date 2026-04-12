@@ -10,6 +10,7 @@ export interface TransitionConfig {
 }
 
 export interface ScreensaverConfig {
+    version: number;
     imageFolder: string;
     includeSubdirectories: boolean;
     changeInterval: number; // milliseconds
@@ -18,13 +19,16 @@ export interface ScreensaverConfig {
     multiMonitorSync: boolean;
     transition: TransitionConfig;
     theme: string;
-    imageFitStyle?: string;
+    imageFitStyle: string;
 }
 
 export interface PatternOptions {
     rows?: number;
     cols?: number;
     density?: number;
+    randomCount?: number;
+    allowOverlap?: boolean;
+    slideSpeed?: number;
 }
 
 export interface PreviewImagesResult {

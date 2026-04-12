@@ -1,31 +1,25 @@
 import '../types';
-import type { ScreensaverConfig } from '../types';
+import type { PatternOptions, ScreensaverConfig } from '../types';
 
-interface ConfigValues {
-    changeInterval: number;
-    imageDirectory: string;
-    includeSubdirectories: boolean;
-    pattern: string;
-    patternOptions?: { rows?: number; cols?: number; density?: number };
-    multiMonitorSync: boolean;
-    transitionEffect: string;
-    transitionDuration: number;
-    theme: string;
-    imageFitStyle: string;
-}
+const CURRENT_CONFIG_VERSION = 2;
 
-// Default values
-let config: ConfigValues = {
-    changeInterval: 10,
-    imageDirectory: '',
+const DEFAULT_CONFIG: ScreensaverConfig = {
+    version: CURRENT_CONFIG_VERSION,
+    imageFolder: '',
     includeSubdirectories: true,
+    changeInterval: 10000,
     pattern: 'simple',
+    patternOptions: {},
     multiMonitorSync: false,
-    transitionEffect: 'fade',
-    transitionDuration: 1000,
+    transition: {
+        effect: 'fade',
+        duration: 1000,
+    },
     theme: 'light',
-    imageFitStyle: 'cover' // Default image fit style
+    imageFitStyle: 'cover',
 };
+
+let config: ScreensaverConfig = { ...DEFAULT_CONFIG };
 
 // DOM Elements
 let tabButtons: NodeListOf<Element>;
@@ -42,11 +36,13 @@ let applyButton: HTMLButtonElement;
 let saveButton: HTMLButtonElement;
 let cancelButton: HTMLButtonElement;
 let doneButton: HTMLButtonElement; // Add done button reference
+let resetButton: HTMLButtonElement | null = null;
 let directoryStatus: HTMLElement;
 let imageCount: HTMLElement;
 let previewContainer: HTMLElement;
 let themeToggle: HTMLButtonElement; // Add theme toggle button reference
 let imageFitStyleSelect: HTMLSelectElement; // Add image fit style select reference
+let toastContainer: HTMLDivElement | null = null;
 
 // Add pagination state and image cache
 let currentImagePage = 0;
@@ -157,6 +153,9 @@ function setupEventListeners(): void {
     saveButton.addEventListener('click', saveChanges);
     cancelButton.addEventListener('click', closeWindow);
     doneButton.addEventListener('click', saveAndClose); // Add done button event listener
+    if (resetButton) {
+        resetButton.addEventListener('click', resetToDefaults);
+    }
     
     // Theme toggle
     themeToggle.addEventListener('click', toggleTheme);
@@ -164,83 +163,32 @@ function setupEventListeners(): void {
 
 // Update UI with loaded configuration
 function updateUIFromConfig(savedConfig: ScreensaverConfig): void {
-    if (savedConfig.changeInterval) {
-        changeIntervalInput.value = (savedConfig.changeInterval / 1000).toString(); // Convert ms to seconds
-    }
-    
-    if (savedConfig.imageFolder) {
-        imageDirectoryInput.value = savedConfig.imageFolder;
-        // Initialize directory and image data
-        validateDirectory(savedConfig.imageFolder, true);
-    }
-    
-    if (savedConfig.includeSubdirectories !== undefined) {
-        includeSubdirectoriesCheckbox.checked = savedConfig.includeSubdirectories;
-    }
-    
-    if (savedConfig.pattern) {
-        selectPattern(savedConfig.pattern);
-    }
-    
-    // Initialize pattern-specific controls based on saved values
-    if (savedConfig.patternOptions) {
-        // Handle specific pattern options if they exist in the configuration
-        switch (savedConfig.pattern) {
-            case 'grid':
-                const gridRows = document.getElementById('grid-rows') as HTMLInputElement;
-                const gridCols = document.getElementById('grid-cols') as HTMLInputElement;
-                
-                if (gridRows && savedConfig.patternOptions.rows) {
-                    gridRows.value = savedConfig.patternOptions.rows.toString();
-                }
-                
-                if (gridCols && savedConfig.patternOptions.cols) {
-                    gridCols.value = savedConfig.patternOptions.cols.toString();
-                }
-                break;
-                
-            case 'mosaic':
-                const mosaicDensity = document.getElementById('mosaic-density') as HTMLInputElement;
-                const densityValue = document.getElementById('mosaic-density-value');
-                
-                if (mosaicDensity && savedConfig.patternOptions.density !== undefined) {
-                    mosaicDensity.value = savedConfig.patternOptions.density.toString();
-                    
-                    if (densityValue) {
-                        let densityText = 'Medium';
-                        const val = savedConfig.patternOptions.density;
-                        
-                        if (val <= 3) densityText = 'Low';
-                        else if (val >= 8) densityText = 'High';
-                        
-                        densityValue.textContent = densityText;
-                    }
-                }
-                break;
-                
-            // Handle other patterns as needed
-        }
-    }
-    
-    if (savedConfig.multiMonitorSync !== undefined) {
-        multiMonitorSyncCheckbox.checked = savedConfig.multiMonitorSync;
-    }
-    
-    if (savedConfig.transition && savedConfig.transition.effect) {
-        transitionEffectSelect.value = savedConfig.transition.effect;
-    }
-    
-    if (savedConfig.transition && savedConfig.transition.duration !== undefined) {
-        transitionDurationInput.value = savedConfig.transition.duration.toString();
-    }
-    
-    if (savedConfig.theme) {
-        config.theme = savedConfig.theme;
-        applyTheme(savedConfig.theme);
-    }
-    
-    if (savedConfig.imageFitStyle) {
-        imageFitStyleSelect.value = savedConfig.imageFitStyle;
+    config = {
+        ...DEFAULT_CONFIG,
+        ...savedConfig,
+        version: savedConfig.version ?? DEFAULT_CONFIG.version,
+        transition: {
+            ...DEFAULT_CONFIG.transition,
+            ...(savedConfig.transition || {}),
+        },
+        patternOptions: {
+            ...(savedConfig.patternOptions || {}),
+        },
+        imageFitStyle: savedConfig.imageFitStyle || DEFAULT_CONFIG.imageFitStyle,
+    };
+
+    changeIntervalInput.value = (config.changeInterval / 1000).toString();
+    imageDirectoryInput.value = config.imageFolder;
+    includeSubdirectoriesCheckbox.checked = config.includeSubdirectories;
+    selectPattern(config.pattern);
+    multiMonitorSyncCheckbox.checked = config.multiMonitorSync;
+    transitionEffectSelect.value = config.transition.effect;
+    transitionDurationInput.value = config.transition.duration.toString();
+    imageFitStyleSelect.value = config.imageFitStyle;
+    applyTheme(config.theme);
+
+    if (config.imageFolder) {
+        validateDirectory(config.imageFolder, true);
     }
 }
 
@@ -264,6 +212,18 @@ function applyTheme(theme: string): void {
 
 // Validate directory and show preview of images
 async function validateDirectory(directory: string, isInitialLoad = false): Promise<void> {
+    if (!directory) {
+        directoryStatus.textContent = 'Directory is required';
+        directoryStatus.className = 'status-message error';
+        imageCount.textContent = 'No images found';
+        previewContainer.innerHTML = '';
+        cachedImageData = null;
+        if (!isInitialLoad) {
+            showErrorMessage('Please choose an image directory.');
+        }
+        return;
+    }
+
     try {
         const directoryExists = await window.electronAPI.validateDirectory(directory);
         
@@ -287,12 +247,18 @@ async function validateDirectory(directory: string, isInitialLoad = false): Prom
             imageCount.textContent = 'No images found';
             previewContainer.innerHTML = '';
             cachedImageData = null;
+            if (!isInitialLoad) {
+                showErrorMessage('Selected directory does not exist or is not accessible.');
+            }
         }
     } catch (error) {
         console.error('Error validating directory:', error);
         directoryStatus.textContent = 'Error validating directory';
         directoryStatus.className = 'status-message error';
         cachedImageData = null;
+        if (!isInitialLoad) {
+            showErrorMessage('Failed to validate the image directory.');
+        }
     }
 }
 
@@ -536,24 +502,31 @@ function loadPatternOptions(pattern: string): void {
     // Load options based on pattern type
     switch (pattern) {
         case 'grid':
+            {
+            const rows = config.patternOptions?.rows ?? 2;
+            const cols = config.patternOptions?.cols ?? 3;
             patternOptionsContainer.innerHTML = `
                 <div class="form-group">
                     <label for="grid-size">Grid Size:</label>
                     <div class="input-group">
-                        <input type="number" id="grid-rows" min="1" max="10" value="2" style="width: 70px">
+                        <input type="number" id="grid-rows" min="1" max="10" value="${rows}" style="width: 70px">
                         <span class="input-group-text">×</span>
-                        <input type="number" id="grid-cols" min="1" max="10" value="3" style="width: 70px">
+                        <input type="number" id="grid-cols" min="1" max="10" value="${cols}" style="width: 70px">
                     </div>
                 </div>
             `;
             break;
+            }
             
         case 'mosaic':
+            {
+            const density = config.patternOptions?.density ?? 5;
+            const densityText = density <= 3 ? 'Low' : density >= 8 ? 'High' : 'Medium';
             patternOptionsContainer.innerHTML = `
                 <div class="form-group">
                     <label for="mosaic-density">Mosaic Density:</label>
-                    <input type="range" id="mosaic-density" min="1" max="10" value="5">
-                    <span id="mosaic-density-value">Medium</span>
+                    <input type="range" id="mosaic-density" min="1" max="10" value="${density}">
+                    <span id="mosaic-density-value">${densityText}</span>
                 </div>
             `;
             
@@ -573,21 +546,38 @@ function loadPatternOptions(pattern: string): void {
                 });
             }
             break;
+            }
             
         case 'random':
+            {
+            const randomCount = config.patternOptions?.randomCount ?? 8;
+            const allowOverlap = config.patternOptions?.allowOverlap ?? true;
             patternOptionsContainer.innerHTML = `
                 <div class="form-group">
                     <label for="random-count">Number of Images:</label>
-                    <input type="number" id="random-count" min="1" max="50" value="8">
+                    <input type="number" id="random-count" min="1" max="50" value="${randomCount}">
                 </div>
                 <div class="form-group">
                     <label>
-                        <input type="checkbox" id="allow-overlap" checked>
+                        <input type="checkbox" id="allow-overlap" ${allowOverlap ? 'checked' : ''}>
                         Allow images to overlap
                     </label>
                 </div>
             `;
             break;
+            }
+
+        case 'sliding':
+            {
+            const slideSpeed = config.patternOptions?.slideSpeed ?? 40;
+            patternOptionsContainer.innerHTML = `
+                <div class="form-group">
+                    <label for="slide-speed">Slide Speed (px/sec):</label>
+                    <input type="number" id="slide-speed" min="10" max="400" value="${slideSpeed}">
+                </div>
+            `;
+            break;
+            }
             
         default:
             // No options for simple pattern
@@ -596,51 +586,56 @@ function loadPatternOptions(pattern: string): void {
 }
 
 // Get configuration values from the UI
-function getConfigFromUI(): ConfigValues {
-    const baseConfig = {
-        changeInterval: Number(changeIntervalInput.value) || 10,
-        imageDirectory: imageDirectoryInput.value,
-        includeSubdirectories: includeSubdirectoriesCheckbox.checked,
-        pattern: config.pattern,
-        multiMonitorSync: multiMonitorSyncCheckbox.checked,
-        transitionEffect: transitionEffectSelect.value,
-        transitionDuration: Number(transitionDurationInput.value) || 1000,
-        theme: config.theme,
-        imageFitStyle: imageFitStyleSelect.value 
-    };
-    
-    // Add pattern-specific options
-    let patternOptions = {};
-    
+function getPatternOptionsFromUI(): PatternOptions {
     switch (config.pattern) {
-        case 'grid':
-            const gridRows = document.getElementById('grid-rows') as HTMLInputElement;
-            const gridCols = document.getElementById('grid-cols') as HTMLInputElement;
-            
-            if (gridRows && gridCols) {
-                patternOptions = {
-                    rows: Number(gridRows.value) || 2,
-                    cols: Number(gridCols.value) || 3
-                };
-            }
-            break;
-            
-        case 'mosaic':
-            const mosaicDensity = document.getElementById('mosaic-density') as HTMLInputElement;
-            
-            if (mosaicDensity) {
-                patternOptions = {
-                    density: Number(mosaicDensity.value) || 5
-                };
-            }
-            break;
-            
-        // Add cases for other patterns as they are implemented
+        case 'grid': {
+            const gridRows = document.getElementById('grid-rows') as HTMLInputElement | null;
+            const gridCols = document.getElementById('grid-cols') as HTMLInputElement | null;
+            return {
+                rows: Number(gridRows?.value) || 2,
+                cols: Number(gridCols?.value) || 3,
+            };
+        }
+        case 'mosaic': {
+            const mosaicDensity = document.getElementById('mosaic-density') as HTMLInputElement | null;
+            return {
+                density: Number(mosaicDensity?.value) || 5,
+            };
+        }
+        case 'random': {
+            const randomCount = document.getElementById('random-count') as HTMLInputElement | null;
+            const allowOverlap = document.getElementById('allow-overlap') as HTMLInputElement | null;
+            return {
+                randomCount: Number(randomCount?.value) || 8,
+                allowOverlap: allowOverlap?.checked ?? true,
+            };
+        }
+        case 'sliding': {
+            const slideSpeed = document.getElementById('slide-speed') as HTMLInputElement | null;
+            return {
+                slideSpeed: Number(slideSpeed?.value) || 40,
+            };
+        }
+        default:
+            return {};
     }
-    
+}
+
+function getConfigFromUI(): ScreensaverConfig {
     return {
-        ...baseConfig,
-        patternOptions
+        version: CURRENT_CONFIG_VERSION,
+        imageFolder: imageDirectoryInput.value,
+        includeSubdirectories: includeSubdirectoriesCheckbox.checked,
+        changeInterval: (Number(changeIntervalInput.value) || 10) * 1000,
+        pattern: config.pattern,
+        patternOptions: getPatternOptionsFromUI(),
+        multiMonitorSync: multiMonitorSyncCheckbox.checked,
+        transition: {
+            effect: transitionEffectSelect.value,
+            duration: Number(transitionDurationInput.value) || 1000,
+        },
+        theme: config.theme,
+        imageFitStyle: imageFitStyleSelect.value || DEFAULT_CONFIG.imageFitStyle,
     };
 }
 
@@ -649,20 +644,8 @@ async function applyChanges(): Promise<void> {
     const newConfig = getConfigFromUI();
     
     try {
-        await window.electronAPI.applyConfig({
-            imageFolder: newConfig.imageDirectory,
-            includeSubdirectories: newConfig.includeSubdirectories,
-            changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
-            pattern: newConfig.pattern,
-            patternOptions: newConfig.patternOptions,
-            multiMonitorSync: newConfig.multiMonitorSync,
-            transition: {
-                effect: newConfig.transitionEffect,
-                duration: newConfig.transitionDuration
-            },
-            theme: newConfig.theme,
-            imageFitStyle: newConfig.imageFitStyle 
-        });
+        await window.electronAPI.applyConfig(newConfig);
+        config = { ...newConfig };
         
         showSuccessMessage('Settings applied successfully');
     } catch (error) {
@@ -676,20 +659,8 @@ async function saveChanges(): Promise<void> {
     const newConfig = getConfigFromUI();
     
     try {
-        await window.electronAPI.saveConfig({
-            imageFolder: newConfig.imageDirectory,
-            includeSubdirectories: newConfig.includeSubdirectories,
-            changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
-            pattern: newConfig.pattern,
-            patternOptions: newConfig.patternOptions,
-            multiMonitorSync: newConfig.multiMonitorSync,
-            transition: {
-                effect: newConfig.transitionEffect,
-                duration: newConfig.transitionDuration
-            },
-            theme: newConfig.theme,
-            imageFitStyle: newConfig.imageFitStyle 
-        });
+        await window.electronAPI.saveConfig(newConfig);
+        config = { ...newConfig };
         
         showSuccessMessage('Settings saved successfully');
     } catch (error) {
@@ -703,27 +674,28 @@ async function saveAndClose(): Promise<void> {
     const newConfig = getConfigFromUI();
     
     try {
-        // Save config directly without showing success message
-        await window.electronAPI.saveConfig({
-            imageFolder: newConfig.imageDirectory,
-            includeSubdirectories: newConfig.includeSubdirectories,
-            changeInterval: newConfig.changeInterval * 1000, // Convert to milliseconds
-            pattern: newConfig.pattern,
-            patternOptions: newConfig.patternOptions,
-            multiMonitorSync: newConfig.multiMonitorSync,
-            transition: {
-                effect: newConfig.transitionEffect,
-                duration: newConfig.transitionDuration
-            },
-            theme: newConfig.theme,
-            imageFitStyle: newConfig.imageFitStyle 
-        });
+        await window.electronAPI.saveConfig(newConfig);
+        config = { ...newConfig };
         
-        // Close window immediately without showing popup
         closeWindow();
     } catch (error) {
         console.error('Error saving and closing:', error);
         showErrorMessage('Failed to save settings');
+    }
+}
+
+async function resetToDefaults(): Promise<void> {
+    const confirmReset = window.confirm('Reset all settings to defaults?');
+    if (!confirmReset) return;
+
+    try {
+        config = { ...DEFAULT_CONFIG };
+        updateUIFromConfig(config);
+        await window.electronAPI.saveConfig(config);
+        showSuccessMessage('Settings reset to defaults');
+    } catch (error) {
+        console.error('Error resetting defaults:', error);
+        showErrorMessage('Failed to reset settings');
     }
 }
 
@@ -734,16 +706,27 @@ function closeWindow(): void {
 
 // Show a success message briefly
 function showSuccessMessage(message: string): void {
-    // Implementation would depend on UI design
-    // For now, just log to console
     console.log('Success:', message);
-    alert(message);
+    showToast(message, 'success');
 }
 
 // Show an error message
 function showErrorMessage(message: string): void {
-    // Implementation would depend on UI design
-    // For now, just log to console
     console.error('Error:', message);
-    alert('Error: ' + message);
+    showToast(message, 'error');
+}
+
+function showToast(message: string, kind: 'success' | 'error'): void {
+    if (!toastContainer) {
+        return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${kind}`;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+
+    window.setTimeout(() => {
+        toast.remove();
+    }, 2800);
 }

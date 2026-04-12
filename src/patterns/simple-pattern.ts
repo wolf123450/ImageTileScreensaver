@@ -1,4 +1,5 @@
 import { Pattern } from './index';
+import type { ScreensaverConfig } from '../types';
 
 export interface SimplePatternConfig {
   imageFitStyle: string;
@@ -20,7 +21,7 @@ export class SimplePattern implements Pattern {
   private currentIndex: number = 0;
   private displayId: number = 0;
 
-  init(config: SimplePatternConfig): void {
+  init(config: ScreensaverConfig & { displayId?: number; displayCount?: number }): void {
     this.config = { ...this.config, ...config };
     this.displayId = config.displayId || 0;
   }

@@ -14,8 +14,8 @@ These items are needed to make the Tauri build production-ready.
 - [x] Configuration dialog via `/c` argument (UI, window management, IPC, persistence, directory browser)
 - [x] JSON config file read/write (`config.ts` with `loadConfig`/`saveConfig`)
 - [x] **CF-1:** Recursive/subdirectory image scanning (implemented in Rust via `walkdir` crate)
-- [ ] **CF-2:** Proper error handling for missing/invalid image directories (user-facing toast notifications instead of `alert()`)
-- [ ] **CF-3:** Validate and migrate saved config on schema changes (version field + merge strategy)
+- [x] **CF-2:** Proper error handling for missing/invalid image directories (user-facing toast notifications replace `alert()`)
+- [x] **CF-3:** Validate and migrate saved config on schema changes (version field + merge strategy)
 
 ### 1.2 Screensaver Integration (Windows)
 - [ ] **SCR-1:** Implement preview mode (`/p <HWND>`) — render into the Windows preview thumbnail
@@ -27,8 +27,8 @@ These items are needed to make the Tauri build production-ready.
 - [x] Simple pattern (single image, timed rotation)
 - [x] Grid pattern (configurable rows × cols, staggered refresh)
 - [x] Mosaic pattern (density-based variable-size cells)
-- [ ] **PAT-1:** Random pattern — images at random positions/sizes with optional overlap
-- [ ] **PAT-2:** Sliding/carousel pattern — images that scroll across the screen
+- [x] **PAT-1:** Random pattern — images at random positions/sizes with optional overlap
+- [x] **PAT-2:** Sliding/carousel pattern — images that scroll across the screen
 - [x] Pattern-specific options in config UI (grid size, mosaic density)
 
 ### 1.4 Settings UI
@@ -36,8 +36,8 @@ These items are needed to make the Tauri build production-ready.
 - [x] Dark/light theme toggle with CSS custom properties
 - [x] Image preview with pagination
 - [x] Pattern visual selectors
-- [ ] **UI-1:** Replace `alert()` messages with inline toast/snackbar notifications
-- [ ] **UI-2:** Add "Reset to Defaults" button
+- [x] **UI-1:** Replace `alert()` messages with inline toast/snackbar notifications
+- [x] **UI-2:** Add "Reset to Defaults" button
 
 ---
 
@@ -73,7 +73,7 @@ These items are needed to make the Tauri build production-ready.
 
 ### 3.1 Architecture Fixes
 - [x] **TD-1:** ~~Remove dead code in `display.ts`~~ — removed with Electron code during Tauri migration
-- [ ] **TD-2:** Unify config types — `ScreensaverConfig` (types.ts) vs `ConfigValues` (screensaver-settings.ts) should be one shared type
+- [x] **TD-2:** Unify config types — settings UI now uses shared `ScreensaverConfig` directly
 - [x] **TD-3:** ~~Fix webpack targets~~ — now targets `web` for Tauri
 - [x] **TD-4:** ~~Replace deprecated `url.format()`~~ — removed with Electron code
 - [x] **TD-5:** ~~Replace `promisify(fs.readdir/stat)`~~ — removed with Electron code (Rust handles file I/O)
@@ -91,9 +91,9 @@ These items are needed to make the Tauri build production-ready.
 
 ### 3.4 Testing
 - [ ] **TEST-1:** Unit tests for config load/save/merge
-- [ ] **TEST-2:** Unit tests for pattern layout algorithms (especially mosaic cell placement)
-- [ ] **TEST-3:** Integration test for screensaver command-line argument parsing
-- [ ] **TEST-4:** E2E test for config dialog save → screensaver reads new config
+- [x] **TEST-2:** Unit tests for pattern layout algorithms (including expanded mosaic + random/sliding coverage)
+- [x] **TEST-3:** Integration test for screensaver command-line argument parsing
+- [x] **TEST-4:** E2E test added for config dialog save → renderer consumes saved config (Playwright spec in `e2e/`)
 
 ### 3.5 Dependencies
 - [x] **DEP-1:** ~~Update Electron~~ — N/A, migrated to Tauri

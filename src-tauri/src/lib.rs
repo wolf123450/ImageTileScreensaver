@@ -11,7 +11,10 @@ use tauri::{WebviewUrl, WebviewWindowBuilder};
 fn parse_run_mode() -> (&'static str, Option<String>) {
     let args: Vec<String> = std::env::args().collect();
     log::info!("Command line arguments: {:?}", args);
+    parse_run_mode_from_args(&args)
+}
 
+fn parse_run_mode_from_args(args: &[String]) -> (&'static str, Option<String>) {
     for (i, arg) in args.iter().enumerate() {
         let a = arg.to_lowercase();
         if a == "/c" || a == "-c" || a.starts_with("/c:") || a.starts_with("-c:") {
@@ -26,6 +29,9 @@ fn parse_run_mode() -> (&'static str, Option<String>) {
                 None
             };
             return ("preview", hwnd);
+        }
+        if a == "/s" || a == "-s" || a.starts_with("/s:") || a.starts_with("-s:") {
+            return ("screensaver", None);
         }
     }
 
@@ -149,13 +155,38 @@ fn create_screensaver_windows(app: &tauri::App) -> Result<(), Box<dyn std::error
 mod tests {
     #[test]
     fn parse_run_mode_defaults_to_screensaver() {
-        // When called with no relevant args, should default to screensaver
-        // (In unit tests we can't easily override std::env::args,
-        //  so we test the logic by checking the function exists and
-        //  the default path returns "screensaver".)
-        let (mode, _) = super::parse_run_mode();
-        // In test context, there are no /c /p /s args
+        let args = vec!["ImageTileScreensaver.scr".to_string()];
+        let (mode, hwnd) = super::parse_run_mode_from_args(&args);
         assert_eq!(mode, "screensaver");
+        assert!(hwnd.is_none());
+    }
+
+    #[test]
+    fn parse_run_mode_detects_config_arg() {
+        let args = vec!["ImageTileScreensaver.scr".to_string(), "/c".to_string()];
+        let (mode, hwnd) = super::parse_run_mode_from_args(&args);
+        assert_eq!(mode, "config");
+        assert!(hwnd.is_none());
+    }
+
+    #[test]
+    fn parse_run_mode_detects_preview_with_colon_hwnd() {
+        let args = vec!["ImageTileScreensaver.scr".to_string(), "/p:12345".to_string()];
+        let (mode, hwnd) = super::parse_run_mode_from_args(&args);
+        assert_eq!(mode, "preview");
+        assert_eq!(hwnd.as_deref(), Some("12345"));
+    }
+
+    #[test]
+    fn parse_run_mode_detects_preview_with_next_arg_hwnd() {
+        let args = vec![
+            "ImageTileScreensaver.scr".to_string(),
+            "/p".to_string(),
+            "67890".to_string(),
+        ];
+        let (mode, hwnd) = super::parse_run_mode_from_args(&args);
+        assert_eq!(mode, "preview");
+        assert_eq!(hwnd.as_deref(), Some("67890"));
     }
 }
 

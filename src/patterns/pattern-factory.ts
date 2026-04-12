@@ -2,11 +2,15 @@ import { Pattern } from './index';
 import { SimplePattern } from './simple-pattern';
 import { GridPattern } from './grid-pattern';
 import { MosaicPattern } from './mosaic-pattern';
+import { RandomPattern } from './random-pattern';
+import { SlidingPattern } from './sliding-pattern';
 
 const patternConstructors: Record<string, () => Pattern> = {
   simple: () => new SimplePattern(),
   grid: () => new GridPattern(),
   mosaic: () => new MosaicPattern(),
+  random: () => new RandomPattern(),
+  sliding: () => new SlidingPattern(),
 };
 
 export class PatternFactory {
