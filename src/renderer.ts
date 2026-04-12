@@ -81,12 +81,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Set up event listeners first to ensure they're active immediately
   // Exit on any key or mouse activity (standard screensaver behavior)
+  // Pass ?debug=1 in the URL to disable exit-on-input for debugging
+  const debugMode = params.debug === '1';
+  if (debugMode) {
+    console.log('DEBUG MODE: exit-on-input disabled. Press Escape or Q to exit.');
+  }
+
   document.addEventListener('keydown', (event) => {
+    if (debugMode && event.key !== 'Escape' && event.key !== 'q') return;
     console.log('Key pressed:', event.key);
     window.electronAPI.closeScreensaver();
   }, true); // Use capturing to ensure event gets processed early
 
   document.addEventListener('mousedown', (event) => {
+    if (debugMode) return;
     console.log('Mouse down at:', event.clientX, event.clientY);
     window.electronAPI.closeScreensaver();
   }, true);
@@ -97,6 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Set initial position when mouse starts moving
   document.addEventListener('mousemove', (e) => {
+    if (debugMode) return;
     if (initialX === 0 && initialY === 0) {
       initialX = e.clientX;
       initialY = e.clientY;
@@ -117,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Also add click handler as a fallback
   document.addEventListener('click', () => {
+    if (debugMode) return;
     console.log('Click detected');
     window.electronAPI.closeScreensaver();
   }, true);

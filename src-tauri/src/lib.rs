@@ -138,15 +138,21 @@ fn create_screensaver_windows(app: &tauri::App) -> Result<(), Box<dyn std::error
             scale,
         );
 
-        let url = format!("index.html?displayId={}&displayCount={}", i, display_count);
-        WebviewWindowBuilder::new(app, &label, WebviewUrl::App(url.into()))
+        let debug_flag = if cfg!(debug_assertions) { "&debug=1" } else { "" };
+        let url = format!("index.html?displayId={}&displayCount={}{}", i, display_count, debug_flag);
+        let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(url.into()))
             .title("")
             .position(logical_x, logical_y)
             .inner_size(logical_w, logical_h)
             .decorations(false)
             .always_on_top(true)
-            .skip_taskbar(true)
-            .build()?;
+            .skip_taskbar(true);
+
+        if cfg!(debug_assertions) {
+            builder = builder.devtools(true);
+        }
+
+        builder.build()?;
     }
 
     // Close the hidden helper window
