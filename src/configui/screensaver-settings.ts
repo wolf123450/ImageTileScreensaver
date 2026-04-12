@@ -1099,7 +1099,7 @@ async function startBake(): Promise<void> {
     fillBar.style.width = '0%';
 
     // Spawn worker
-    const worker = new Worker('color-worker.bundle.js');
+    const worker = new Worker('../color-worker.bundle.js');
     activeWorker = worker;
 
     worker.onmessage = async (e: MessageEvent) => {
