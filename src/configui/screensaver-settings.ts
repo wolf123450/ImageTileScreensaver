@@ -520,31 +520,215 @@ function loadPatternOptions(pattern: string): void {
             
         case 'mosaic':
             {
-            const density = config.patternOptions?.density ?? 5;
-            const densityText = density <= 3 ? 'Low' : density >= 8 ? 'High' : 'Medium';
+            const opts = config.patternOptions ?? {};
+            const tileArea = opts.tileAreaPercent ?? 7;
+            const tileMargin = opts.tileMargin ?? 4;
+            const placementSpeed = opts.placementSpeed ?? 200;
+            const maxTiles = opts.maxTiles ?? 200;
+            const startPos = opts.startPosition ?? 'center';
+            const priorityFn = opts.priorityFunction ?? 'center-out';
+            const dirAngle = opts.directionAngle ?? 0;
+            const holdDuration = opts.holdDuration != null ? opts.holdDuration / 1000 : 5;
+            const zoomEnabled = opts.zoomEnabled ?? true;
+            const maxZoomOut = opts.maxZoomOut != null ? Math.round(opts.maxZoomOut * 100) : 30;
+            const photomosaicEnabled = !!(opts.referenceImage || opts.referenceImageDir);
+            const refSource = opts.referenceImage ? 'single' : opts.referenceImageDir ? 'directory' : 'random';
+            const colorMatch = opts.colorMatchStrategy ?? 'average';
+
             patternOptionsContainer.innerHTML = `
-                <div class="form-group">
-                    <label for="mosaic-density">Mosaic Density:</label>
-                    <input type="range" id="mosaic-density" min="1" max="10" value="${density}">
-                    <span id="mosaic-density-value">${densityText}</span>
+                <div class="mosaic-option-group">
+                    <h4>Placement</h4>
+                    <div class="form-group">
+                        <label for="mosaic-tile-area">Tile Size:</label>
+                        <div class="range-with-value">
+                            <input type="range" id="mosaic-tile-area" min="1" max="20" value="${tileArea}">
+                            <span class="range-value" id="mosaic-tile-area-value">${tileArea}%</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mosaic-tile-margin">Tile Margin:</label>
+                        <div class="range-with-value">
+                            <input type="range" id="mosaic-tile-margin" min="0" max="100" value="${tileMargin}">
+                            <span class="range-value" id="mosaic-tile-margin-value">${tileMargin}px</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mosaic-placement-speed">Placement Speed:</label>
+                        <div class="range-with-value">
+                            <input type="range" id="mosaic-placement-speed" min="50" max="1000" step="50" value="${placementSpeed}">
+                            <span class="range-value" id="mosaic-placement-speed-value">${placementSpeed}ms</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mosaic-max-tiles">Max Tiles (0 = unlimited):</label>
+                        <input type="number" id="mosaic-max-tiles" min="0" max="1000" value="${maxTiles}">
+                    </div>
+                    <div class="form-group">
+                        <label>Start Position:</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="mosaic-start-position" value="center" ${startPos === 'center' ? 'checked' : ''}> Center</label>
+                            <label><input type="radio" name="mosaic-start-position" value="random" ${startPos === 'random' ? 'checked' : ''}> Random</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mosaic-priority-function">Placement Order:</label>
+                        <select id="mosaic-priority-function">
+                            <option value="center-out" ${priorityFn === 'center-out' ? 'selected' : ''}>Center Out</option>
+                            <option value="spiral-cw" ${priorityFn === 'spiral-cw' ? 'selected' : ''}>Spiral CW</option>
+                            <option value="spiral-ccw" ${priorityFn === 'spiral-ccw' ? 'selected' : ''}>Spiral CCW</option>
+                            <option value="directional" ${priorityFn === 'directional' ? 'selected' : ''}>Directional</option>
+                            <option value="random" ${priorityFn === 'random' ? 'selected' : ''}>Random</option>
+                        </select>
+                    </div>
+                    <div class="form-group conditional-field ${priorityFn === 'directional' ? 'visible' : ''}" id="mosaic-direction-angle-group">
+                        <label for="mosaic-direction-angle">Direction Angle:</label>
+                        <div class="range-with-value">
+                            <input type="range" id="mosaic-direction-angle" min="0" max="360" value="${dirAngle}">
+                            <span class="range-value" id="mosaic-direction-angle-value">${dirAngle}°</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mosaic-option-group">
+                    <h4>Display</h4>
+                    <div class="form-group">
+                        <label for="mosaic-hold-duration">Hold Duration (seconds):</label>
+                        <input type="number" id="mosaic-hold-duration" min="1" max="60" value="${holdDuration}">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="mosaic-zoom-enabled" ${zoomEnabled ? 'checked' : ''}>
+                            Enable zoom out
+                        </label>
+                    </div>
+                    <div class="form-group conditional-field ${zoomEnabled ? 'visible' : ''}" id="mosaic-max-zoom-out-group">
+                        <label for="mosaic-max-zoom-out">Max Zoom Out:</label>
+                        <div class="range-with-value">
+                            <input type="range" id="mosaic-max-zoom-out" min="10" max="100" value="${maxZoomOut}" ${!zoomEnabled ? 'disabled' : ''}>
+                            <span class="range-value" id="mosaic-max-zoom-out-value">${maxZoomOut}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mosaic-option-group">
+                    <button class="collapsible-header ${photomosaicEnabled ? 'expanded' : ''}" id="mosaic-photomosaic-toggle">Photomosaic</button>
+                    <div class="collapsible-content ${photomosaicEnabled ? 'expanded' : ''}" id="mosaic-photomosaic-content">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="mosaic-photomosaic-enabled" ${photomosaicEnabled ? 'checked' : ''}>
+                                Enable photomosaic
+                            </label>
+                        </div>
+                        <div class="conditional-field ${photomosaicEnabled ? 'visible' : ''}" id="mosaic-photomosaic-options">
+                            <div class="form-group">
+                                <label>Reference Source:</label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="mosaic-reference-source" value="random" ${refSource === 'random' ? 'checked' : ''}> Random from Image Folder</label>
+                                    <label><input type="radio" name="mosaic-reference-source" value="single" ${refSource === 'single' ? 'checked' : ''}> Single Image</label>
+                                    <label><input type="radio" name="mosaic-reference-source" value="directory" ${refSource === 'directory' ? 'checked' : ''}> Directory</label>
+                                </div>
+                            </div>
+                            <div class="form-group conditional-field ${refSource === 'single' ? 'visible' : ''}" id="mosaic-reference-image-group">
+                                <label for="mosaic-reference-image">Reference Image:</label>
+                                <div class="directory-selector">
+                                    <input type="text" id="mosaic-reference-image" value="${opts.referenceImage ?? ''}" readonly>
+                                    <button class="browse-button" id="mosaic-browse-reference-image">Browse...</button>
+                                </div>
+                            </div>
+                            <div class="form-group conditional-field ${refSource === 'directory' ? 'visible' : ''}" id="mosaic-reference-dir-group">
+                                <label for="mosaic-reference-dir">Reference Directory:</label>
+                                <div class="directory-selector">
+                                    <input type="text" id="mosaic-reference-dir" value="${opts.referenceImageDir ?? ''}" readonly>
+                                    <button class="browse-button" id="mosaic-browse-reference-dir">Browse...</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="mosaic-color-match">Color Match:</label>
+                                <select id="mosaic-color-match">
+                                    <option value="average" ${colorMatch === 'average' ? 'selected' : ''}>Average Color</option>
+                                    <option value="dominant" ${colorMatch === 'dominant' ? 'selected' : ''}>Dominant Color</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
-            
-            // Add live update for range slider
-            const densitySlider = document.getElementById('mosaic-density') as HTMLInputElement;
-            const densityValue = document.getElementById('mosaic-density-value');
-            
-            if (densitySlider && densityValue) {
-                densitySlider.addEventListener('input', () => {
-                    const val = parseInt(densitySlider.value);
-                    let densityText = 'Medium';
-                    
-                    if (val <= 3) densityText = 'Low';
-                    else if (val >= 8) densityText = 'High';
-                    
-                    densityValue.textContent = densityText;
-                });
+
+            // Wire up range slider live labels
+            const rangeInputs: Array<{ id: string; labelId: string; suffix: string }> = [
+                { id: 'mosaic-tile-area', labelId: 'mosaic-tile-area-value', suffix: '%' },
+                { id: 'mosaic-tile-margin', labelId: 'mosaic-tile-margin-value', suffix: 'px' },
+                { id: 'mosaic-placement-speed', labelId: 'mosaic-placement-speed-value', suffix: 'ms' },
+                { id: 'mosaic-direction-angle', labelId: 'mosaic-direction-angle-value', suffix: '°' },
+                { id: 'mosaic-max-zoom-out', labelId: 'mosaic-max-zoom-out-value', suffix: '%' },
+            ];
+            for (const { id, labelId, suffix } of rangeInputs) {
+                const input = document.getElementById(id) as HTMLInputElement | null;
+                const label = document.getElementById(labelId);
+                if (input && label) {
+                    input.addEventListener('input', () => {
+                        label.textContent = input.value + suffix;
+                    });
+                }
             }
+
+            // Conditional: direction angle visibility
+            const prioritySelect = document.getElementById('mosaic-priority-function') as HTMLSelectElement | null;
+            const angleGroup = document.getElementById('mosaic-direction-angle-group');
+            prioritySelect?.addEventListener('change', () => {
+                angleGroup?.classList.toggle('visible', prioritySelect.value === 'directional');
+            });
+
+            // Conditional: zoom out slider
+            const zoomCheck = document.getElementById('mosaic-zoom-enabled') as HTMLInputElement | null;
+            const zoomGroup = document.getElementById('mosaic-max-zoom-out-group');
+            const zoomSlider = document.getElementById('mosaic-max-zoom-out') as HTMLInputElement | null;
+            zoomCheck?.addEventListener('change', () => {
+                zoomGroup?.classList.toggle('visible', zoomCheck.checked);
+                if (zoomSlider) zoomSlider.disabled = !zoomCheck.checked;
+            });
+
+            // Collapsible: photomosaic section
+            const photoToggle = document.getElementById('mosaic-photomosaic-toggle');
+            const photoContent = document.getElementById('mosaic-photomosaic-content');
+            photoToggle?.addEventListener('click', () => {
+                photoToggle.classList.toggle('expanded');
+                photoContent?.classList.toggle('expanded');
+            });
+
+            // Conditional: photomosaic enabled
+            const photoEnabled = document.getElementById('mosaic-photomosaic-enabled') as HTMLInputElement | null;
+            const photoOptions = document.getElementById('mosaic-photomosaic-options');
+            photoEnabled?.addEventListener('change', () => {
+                photoOptions?.classList.toggle('visible', photoEnabled.checked);
+            });
+
+            // Conditional: reference source radios
+            const refRadios = document.querySelectorAll('input[name="mosaic-reference-source"]');
+            const refImageGroup = document.getElementById('mosaic-reference-image-group');
+            const refDirGroup = document.getElementById('mosaic-reference-dir-group');
+            const updateRefVisibility = () => {
+                const selected = (document.querySelector('input[name="mosaic-reference-source"]:checked') as HTMLInputElement)?.value;
+                refImageGroup?.classList.toggle('visible', selected === 'single');
+                refDirGroup?.classList.toggle('visible', selected === 'directory');
+            };
+            refRadios.forEach(radio => radio.addEventListener('change', updateRefVisibility));
+
+            // Browse buttons for reference image/dir
+            const browseRefImage = document.getElementById('mosaic-browse-reference-image');
+            const refImageInput = document.getElementById('mosaic-reference-image') as HTMLInputElement | null;
+            browseRefImage?.addEventListener('click', async () => {
+                const path = await window.electronAPI.browseDirectory();
+                if (path && refImageInput) refImageInput.value = path;
+            });
+
+            const browseRefDir = document.getElementById('mosaic-browse-reference-dir');
+            const refDirInput = document.getElementById('mosaic-reference-dir') as HTMLInputElement | null;
+            browseRefDir?.addEventListener('click', async () => {
+                const path = await window.electronAPI.browseDirectory();
+                if (path && refDirInput) refDirInput.value = path;
+            });
+
             break;
             }
             
@@ -597,10 +781,49 @@ function getPatternOptionsFromUI(): PatternOptions {
             };
         }
         case 'mosaic': {
-            const mosaicDensity = document.getElementById('mosaic-density') as HTMLInputElement | null;
-            return {
-                density: Number(mosaicDensity?.value) || 5,
+            const tileArea = document.getElementById('mosaic-tile-area') as HTMLInputElement | null;
+            const tileMargin = document.getElementById('mosaic-tile-margin') as HTMLInputElement | null;
+            const placementSpeed = document.getElementById('mosaic-placement-speed') as HTMLInputElement | null;
+            const maxTiles = document.getElementById('mosaic-max-tiles') as HTMLInputElement | null;
+            const startPos = document.querySelector('input[name="mosaic-start-position"]:checked') as HTMLInputElement | null;
+            const priorityFn = document.getElementById('mosaic-priority-function') as HTMLSelectElement | null;
+            const dirAngle = document.getElementById('mosaic-direction-angle') as HTMLInputElement | null;
+            const holdDuration = document.getElementById('mosaic-hold-duration') as HTMLInputElement | null;
+            const zoomEnabled = document.getElementById('mosaic-zoom-enabled') as HTMLInputElement | null;
+            const maxZoomOut = document.getElementById('mosaic-max-zoom-out') as HTMLInputElement | null;
+            const photoEnabled = document.getElementById('mosaic-photomosaic-enabled') as HTMLInputElement | null;
+            const refSource = document.querySelector('input[name="mosaic-reference-source"]:checked') as HTMLInputElement | null;
+            const refImage = document.getElementById('mosaic-reference-image') as HTMLInputElement | null;
+            const refDir = document.getElementById('mosaic-reference-dir') as HTMLInputElement | null;
+            const colorMatch = document.getElementById('mosaic-color-match') as HTMLSelectElement | null;
+
+            const result: PatternOptions = {
+                tileAreaPercent: Number(tileArea?.value) || 7,
+                tileMargin: Number(tileMargin?.value) || 4,
+                placementSpeed: Number(placementSpeed?.value) || 200,
+                maxTiles: Number(maxTiles?.value) || 200,
+                startPosition: (startPos?.value as 'center' | 'random') || 'center',
+                priorityFunction: (priorityFn?.value as PatternOptions['priorityFunction']) || 'center-out',
+                directionAngle: Number(dirAngle?.value) || 0,
+                holdDuration: (Number(holdDuration?.value) || 5) * 1000,
+                zoomEnabled: zoomEnabled?.checked ?? true,
+                maxZoomOut: (Number(maxZoomOut?.value) || 30) / 100,
+                colorMatchStrategy: (colorMatch?.value as 'average' | 'dominant') || 'average',
             };
+
+            if (photoEnabled?.checked) {
+                const source = refSource?.value || 'random';
+                if (source === 'single' && refImage?.value) {
+                    result.referenceImage = refImage.value;
+                } else if (source === 'directory' && refDir?.value) {
+                    result.referenceImageDir = refDir.value;
+                }
+                if (source === 'random') {
+                    result.referenceImage = '__random__';
+                }
+            }
+
+            return result;
         }
         case 'random': {
             const randomCount = document.getElementById('random-count') as HTMLInputElement | null;

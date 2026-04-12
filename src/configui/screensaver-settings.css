@@ -444,3 +444,100 @@ input[type="number"] {
     margin-top: 5px;
     margin-bottom: 10px;
 }
+
+/* Collapsible section */
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px 0;
+    user-select: none;
+    font-weight: 600;
+    color: var(--text-color);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+.collapsible-header::before {
+    content: '▶';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.2s;
+    font-size: 0.8em;
+}
+
+.collapsible-header.expanded::before {
+    transform: rotate(90deg);
+}
+
+.collapsible-content {
+    display: none;
+    padding-left: 20px;
+}
+
+.collapsible-content.expanded {
+    display: block;
+}
+
+/* Conditional field visibility */
+.conditional-field {
+    display: none;
+}
+
+.conditional-field.visible {
+    display: block;
+}
+
+/* Mosaic option groups */
+.mosaic-option-group {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mosaic-option-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.mosaic-option-group h4 {
+    margin-bottom: 8px;
+    font-size: 0.95em;
+    color: var(--secondary-color);
+}
+
+/* Range slider value labels */
+.range-with-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.range-with-value input[type="range"] {
+    flex: 1;
+}
+
+.range-with-value .range-value {
+    min-width: 50px;
+    text-align: right;
+    font-size: 0.9em;
+    color: var(--secondary-color);
+}
+
+/* Radio group styling */
+.radio-group {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
