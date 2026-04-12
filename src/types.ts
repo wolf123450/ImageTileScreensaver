@@ -29,6 +29,21 @@ export interface PatternOptions {
     randomCount?: number;
     allowOverlap?: boolean;
     slideSpeed?: number;
+    // Mosaic placement engine options
+    placementSpeed?: number;
+    tileAreaPercent?: number;
+    tileMargin?: number;
+    priorityFunction?: 'center-out' | 'spiral-cw' | 'spiral-ccw' | 'random' | 'directional';
+    directionAngle?: number;
+    startPosition?: 'center' | 'random';
+    maxTiles?: number;
+    holdDuration?: number;
+    zoomEnabled?: boolean;
+    maxZoomOut?: number;
+    bufferSize?: number;
+    referenceImage?: string;
+    referenceImageDir?: string;
+    colorMatchStrategy?: 'average' | 'dominant';
 }
 
 export interface PreviewImagesResult {
