@@ -530,7 +530,8 @@ function loadPatternOptions(pattern: string): void {
             const dirAngle = opts.directionAngle ?? 0;
             const holdDuration = opts.holdDuration != null ? opts.holdDuration / 1000 : 5;
             const zoomEnabled = opts.zoomEnabled ?? true;
-            const maxZoomOut = opts.maxZoomOut != null ? Math.round(opts.maxZoomOut * 100) : 30;
+            const maxZoomStep = opts.maxZoomOut != null ? Math.min(6, Math.max(0, Math.round(-Math.log2(opts.maxZoomOut)))) : 2;
+            const maxZoomPct = (100 / Math.pow(2, maxZoomStep));
             const photomosaicEnabled = !!(opts.referenceImage || opts.referenceImageDir);
             const refSource = opts.referenceImage ? 'single' : opts.referenceImageDir ? 'directory' : 'random';
             const colorMatch = opts.colorMatchStrategy ?? 'average';
@@ -604,8 +605,8 @@ function loadPatternOptions(pattern: string): void {
                     <div class="form-group conditional-field ${zoomEnabled ? 'visible' : ''}" id="mosaic-max-zoom-out-group">
                         <label for="mosaic-max-zoom-out">Max Zoom Out:</label>
                         <div class="range-with-value">
-                            <input type="range" id="mosaic-max-zoom-out" min="10" max="100" value="${maxZoomOut}" ${!zoomEnabled ? 'disabled' : ''}>
-                            <span class="range-value" id="mosaic-max-zoom-out-value">${maxZoomOut}%</span>
+                            <input type="range" id="mosaic-max-zoom-out" min="0" max="6" step="1" value="${maxZoomStep}" ${!zoomEnabled ? 'disabled' : ''}>
+                            <span class="range-value" id="mosaic-max-zoom-out-value">${maxZoomPct <= 10 ? maxZoomPct.toFixed(2) : maxZoomPct <= 50 ? maxZoomPct.toFixed(1) : maxZoomPct}%</span>
                         </div>
                     </div>
                 </div>
@@ -660,7 +661,7 @@ function loadPatternOptions(pattern: string): void {
                 { id: 'mosaic-tile-margin', labelId: 'mosaic-tile-margin-value', suffix: 'px' },
                 { id: 'mosaic-placement-speed', labelId: 'mosaic-placement-speed-value', suffix: 'ms' },
                 { id: 'mosaic-direction-angle', labelId: 'mosaic-direction-angle-value', suffix: '°' },
-                { id: 'mosaic-max-zoom-out', labelId: 'mosaic-max-zoom-out-value', suffix: '%' },
+
             ];
             for (const { id, labelId, suffix } of rangeInputs) {
                 const input = document.getElementById(id) as HTMLInputElement | null;
@@ -679,13 +680,21 @@ function loadPatternOptions(pattern: string): void {
                 angleGroup?.classList.toggle('visible', prioritySelect.value === 'directional');
             });
 
-            // Conditional: zoom out slider
+            // Conditional: zoom out slider with power-of-2 label
             const zoomCheck = document.getElementById('mosaic-zoom-enabled') as HTMLInputElement | null;
             const zoomGroup = document.getElementById('mosaic-max-zoom-out-group');
             const zoomSlider = document.getElementById('mosaic-max-zoom-out') as HTMLInputElement | null;
+            const zoomLabel = document.getElementById('mosaic-max-zoom-out-value');
             zoomCheck?.addEventListener('change', () => {
                 zoomGroup?.classList.toggle('visible', zoomCheck.checked);
                 if (zoomSlider) zoomSlider.disabled = !zoomCheck.checked;
+            });
+            zoomSlider?.addEventListener('input', () => {
+                if (zoomLabel) {
+                    const n = Number(zoomSlider.value);
+                    const pct = 100 / Math.pow(2, n);
+                    zoomLabel.textContent = (pct <= 10 ? pct.toFixed(2) : pct <= 50 ? pct.toFixed(1) : pct) + '%';
+                }
             });
 
             // Collapsible: photomosaic section
@@ -801,13 +810,13 @@ function getPatternOptionsFromUI(): PatternOptions {
                 tileAreaPercent: Number(tileArea?.value) || 7,
                 tileMargin: Number(tileMargin?.value) || 4,
                 placementSpeed: Number(placementSpeed?.value) || 200,
-                maxTiles: Number(maxTiles?.value) || 200,
+                maxTiles: maxTiles?.value != null && maxTiles.value !== '' ? Number(maxTiles.value) : 200,
                 startPosition: (startPos?.value as 'center' | 'random') || 'center',
                 priorityFunction: (priorityFn?.value as PatternOptions['priorityFunction']) || 'center-out',
                 directionAngle: Number(dirAngle?.value) || 0,
                 holdDuration: (Number(holdDuration?.value) || 5) * 1000,
                 zoomEnabled: zoomEnabled?.checked ?? true,
-                maxZoomOut: (Number(maxZoomOut?.value) || 30) / 100,
+                maxZoomOut: 1 / Math.pow(2, Number(maxZoomOut?.value) || 0),
                 colorMatchStrategy: (colorMatch?.value as 'average' | 'dominant') || 'average',
             };
 
