@@ -20,6 +20,7 @@ export class ImageBuffer {
   private buffer: BufferedImage[] = [];
   private _bufferSize: number = 5;
   private colorStrategy: 'average' | 'dominant' = 'average';
+  private colorCache: Map<string, { avgColor: RGB; domColor: RGB }> | null = null;
   targetArea: number = 0;
 
   get bufferedCount(): number {
@@ -31,6 +32,7 @@ export class ImageBuffer {
     viewportWidth: number,
     viewportHeight: number,
     config: ImageBufferConfig,
+    colorCache?: Map<string, { avgColor: RGB; domColor: RGB }>,
   ): void {
     this.allUrls = [...imageUrls];
     this.availableUrls = this.shuffle([...imageUrls]);
@@ -38,6 +40,7 @@ export class ImageBuffer {
     this.colorStrategy = config.colorMatchStrategy ?? 'average';
     this.targetArea = viewportWidth * viewportHeight * ((config.tileAreaPercent ?? 7) / 100);
     this.buffer = [];
+    this.colorCache = colorCache ?? null;
   }
 
   async prefill(): Promise<void> {
@@ -105,16 +108,23 @@ export class ImageBuffer {
 
     const url = this.availableUrls.shift()!;
 
+    // Check color cache first
+    const cached = this.colorCache?.get(url);
+
     return new Promise<void>((resolve) => {
       const img = new Image();
       img.onload = () => {
         let color: RGB;
-        try {
-          color = this.colorStrategy === 'dominant'
-            ? dominantColor(img)
-            : averageColor(img);
-        } catch {
-          color = [0, 0, 0];
+        if (cached) {
+          color = this.colorStrategy === 'dominant' ? cached.domColor : cached.avgColor;
+        } else {
+          try {
+            color = this.colorStrategy === 'dominant'
+              ? dominantColor(img)
+              : averageColor(img);
+          } catch {
+            color = [0, 0, 0];
+          }
         }
         this.buffer.push({
           url,

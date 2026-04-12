@@ -92,4 +92,44 @@ describe('ImageBuffer', () => {
     // Should have reshuffled and started loading again
     expect(buffer.hasMore()).toBe(true);
   });
+
+  describe('color cache', () => {
+    it('uses cached color instead of computing when cache is provided', async () => {
+      const buffer = new ImageBuffer();
+      const cache = new Map<string, { avgColor: [number, number, number]; domColor: [number, number, number] }>();
+      cache.set('a.jpg', { avgColor: [255, 0, 0], domColor: [200, 0, 0] });
+      cache.set('b.jpg', { avgColor: [0, 255, 0], domColor: [0, 200, 0] });
+
+      buffer.init(
+        ['a.jpg', 'b.jpg'],
+        800, 600,
+        { tileAreaPercent: 10, bufferSize: 2 },
+        cache,
+      );
+
+      await buffer.prefill();
+      const img = buffer.next();
+      expect(img).not.toBeNull();
+      // Color should come from cache, not computed
+      const isRed = img!.avgColor[0] === 255 && img!.avgColor[1] === 0 && img!.avgColor[2] === 0;
+      const isGreen = img!.avgColor[0] === 0 && img!.avgColor[1] === 255 && img!.avgColor[2] === 0;
+      expect(isRed || isGreen).toBe(true);
+    });
+
+    it('falls back to computed color on cache miss', async () => {
+      const buffer = new ImageBuffer();
+      const cache = new Map<string, { avgColor: [number, number, number]; domColor: [number, number, number] }>();
+      cache.set('a.jpg', { avgColor: [255, 0, 0], domColor: [200, 0, 0] });
+
+      buffer.init(
+        ['a.jpg', 'b.jpg'],
+        800, 600,
+        { tileAreaPercent: 10, bufferSize: 2 },
+        cache,
+      );
+
+      await buffer.prefill();
+      expect(buffer.bufferedCount).toBe(2);
+    });
+  });
 });
