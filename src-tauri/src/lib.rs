@@ -63,6 +63,7 @@ pub fn run() {
             commands::apply_config,
             commands::save_config,
             commands::get_log_path,
+            commands::exit_screensaver,
         ])
         .setup(move |app| {
             match run_mode {

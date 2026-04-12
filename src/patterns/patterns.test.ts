@@ -211,6 +211,27 @@ describe('MosaicPattern', () => {
     expect(highCount).toBeGreaterThanOrEqual(lowCount);
   });
 
+  it('builds the mosaic incrementally over time', () => {
+    vi.useFakeTimers();
+
+    const pattern = new MosaicPattern();
+    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 1000 }, { density: 5 }));
+    pattern.apply(container, testImages);
+
+    const totalCells = container.querySelectorAll('div').length;
+    const initialImages = container.querySelectorAll('img').length;
+    expect(initialImages).toBe(1);
+
+    vi.advanceTimersByTime(1000);
+    const nextImages = container.querySelectorAll('img').length;
+
+    expect(nextImages).toBeGreaterThan(initialImages);
+    expect(nextImages).toBeLessThanOrEqual(totalCells);
+
+    pattern.cleanup();
+    vi.useRealTimers();
+  });
+
   it('cleans up timers', () => {
     const pattern = new MosaicPattern();
     pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 3 }));
@@ -218,15 +239,22 @@ describe('MosaicPattern', () => {
     pattern.cleanup();
   });
 
-  it('every cell has an image', () => {
+  it('eventually fills every cell with an image', () => {
+    vi.useFakeTimers();
+
     const pattern = new MosaicPattern();
-    pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 5 }));
+    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 1000 }, { density: 5 }));
     pattern.apply(container, testImages);
 
     const cells = container.querySelectorAll('div');
+    vi.advanceTimersByTime(10000);
+
     cells.forEach(cell => {
       expect(cell.querySelector('img')).not.toBeNull();
     });
+
+    pattern.cleanup();
+    vi.useRealTimers();
   });
 });
 

@@ -2,7 +2,7 @@ use crate::config::{ConfigState, ScreensaverConfig, save_config_to_disk};
 use crate::images::scan_images;
 use serde::Serialize;
 use std::path::Path;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,4 +75,9 @@ pub fn get_log_path() -> String {
         .join("screensaver.log")
         .to_string_lossy()
         .to_string()
+}
+
+#[tauri::command]
+pub fn exit_screensaver(app: AppHandle) {
+    app.exit(0);
 }

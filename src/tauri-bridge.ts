@@ -18,9 +18,8 @@ function toAssetUrls(paths: string[]): string[] {
 }
 
 const tauriAPI: ScreensaverAPI = {
-    closeScreensaver: () => {
-        getCurrentWindow().close();
-    },
+    closeScreensaver: () =>
+        invoke('exit_screensaver').then(() => {}),
 
     getImages: async () => {
         const paths = await invoke<string[]>('get_images');

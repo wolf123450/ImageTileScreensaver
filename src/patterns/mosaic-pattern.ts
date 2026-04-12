@@ -22,7 +22,8 @@ export class MosaicPattern implements Pattern {
   };
   private refreshTimers: number[] = [];
   private mosaicCells: HTMLDivElement[] = [];
-  
+  private pendingFillIndices: number[] = [];
+
   init(config: ScreensaverConfig): void {
     this.config = {
       ...this.config,
@@ -31,40 +32,37 @@ export class MosaicPattern implements Pattern {
       density: config.patternOptions?.density ?? this.config.density,
     };
   }
-  
+
   apply(container: HTMLElement, imageUrls: string[]): void {
     if (!imageUrls.length) return;
-    
+
     console.log(`Applying mosaic pattern with density: ${this.config.density}`);
-    
+
     // Clean up any previous state
     this.cleanup();
-    
+
     // Clear the container
     container.innerHTML = '';
-    
+
     // Reset mosaic cells array
     this.mosaicCells = [];
-    
+
     // Set container to be a grid for mosaic layout
     container.style.display = 'grid';
-    
+
     // Generate mosaic layout based on density
     const layout = this.generateMosaicLayout();
-    
+
     // Apply grid template to container
     container.style.gridTemplateColumns = layout.columns;
     container.style.gridTemplateRows = layout.rows;
     container.style.gap = '8px';
     container.style.padding = '8px';
-    
-    // Create mosaic cells with random images
+
+    // Create empty mosaic cells first; images will be filled over time.
     for (let i = 0; i < layout.cells.length; i++) {
       const cellConfig = layout.cells[i];
-      
-      // Select a random image for initial display
-      const randomImageIndex = Math.floor(Math.random() * imageUrls.length);
-      
+
       // Create cell container
       const cell = document.createElement('div');
       cell.style.gridColumnStart = cellConfig.colStart.toString();
@@ -74,27 +72,22 @@ export class MosaicPattern implements Pattern {
       cell.style.overflow = 'hidden';
       cell.style.position = 'relative';
       cell.dataset.cellIndex = i.toString();
-      
-      // Create image
-      const img = document.createElement('img');
-      img.src = imageUrls[randomImageIndex];
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = this.config.imageFitStyle;
-      img.style.transition = 'opacity 0.5s ease-in-out';
-      
-      cell.appendChild(img);
+
       container.appendChild(cell);
-      
+
       // Store the cell for later updates
       this.mosaicCells.push(cell);
     }
-    
+
+    // Start with one tile visible, then fill the rest incrementally.
+    this.pendingFillIndices = this.buildShuffledIndices(this.mosaicCells.length);
+    this.fillNextMosaicCell(imageUrls);
+
     // Calculate individual refresh interval based on total cell count
     const totalCells = layout.cells.length;
-    const individualRefreshInterval = this.config.changeInterval / totalCells;
-    
-    // Set up continuous timer to refresh images one at a time
+    const individualRefreshInterval = Math.max(200, this.config.changeInterval / totalCells);
+
+    // Set up continuous timer to fill, then refresh one cell at a time.
     this.setupMosaicRefreshTimer(imageUrls, individualRefreshInterval);
   }
   
@@ -241,31 +234,82 @@ export class MosaicPattern implements Pattern {
   
   private setupMosaicRefreshTimer(imageUrls: string[], interval: number): void {
     if (this.mosaicCells.length === 0 || imageUrls.length === 0) return;
-    
+
     console.log(`Setting up mosaic refresh with interval: ${interval}ms per cell`);
-    
-    // Set a single interval timer that will replace one random image at a time
+
     const continuousTimer = window.setInterval(() => {
+      // Fill empty cells first so the layout builds up over time.
+      if (this.fillNextMosaicCell(imageUrls)) {
+        return;
+      }
+
       this.replaceRandomMosaicImage(imageUrls);
     }, interval);
-    
+
     this.refreshTimers.push(continuousTimer);
   }
-  
+
+  private buildShuffledIndices(count: number): number[] {
+    const indices = Array.from({ length: count }, (_, idx) => idx);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices;
+  }
+
+  private createCellImage(imageUrls: string[]): HTMLImageElement {
+    const randomImageIndex = Math.floor(Math.random() * imageUrls.length);
+    const img = document.createElement('img');
+    img.src = imageUrls[randomImageIndex];
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = this.config.imageFitStyle;
+    img.style.transition = 'opacity 0.5s ease-in-out';
+    return img;
+  }
+
+  private fillNextMosaicCell(imageUrls: string[]): boolean {
+    while (this.pendingFillIndices.length > 0) {
+      const nextIndex = this.pendingFillIndices.shift();
+      if (nextIndex === undefined) return false;
+
+      const cell = this.mosaicCells[nextIndex];
+      if (!cell || cell.querySelector('img')) {
+        continue;
+      }
+
+      const img = this.createCellImage(imageUrls);
+      img.style.opacity = '0';
+      cell.appendChild(img);
+      requestAnimationFrame(() => {
+        img.style.opacity = '1';
+      });
+      return true;
+    }
+
+    return false;
+  }
+
   private replaceRandomMosaicImage(imageUrls: string[]): void {
     if (this.mosaicCells.length === 0 || imageUrls.length === 0) return;
-    const randomCellIndex = Math.floor(Math.random() * this.mosaicCells.length);
-    replaceImageInCell(this.mosaicCells[randomCellIndex], imageUrls, this.config.imageFitStyle);
+
+    const filledCells = this.mosaicCells.filter(cell => cell.querySelector('img'));
+    if (filledCells.length === 0) return;
+
+    const randomCellIndex = Math.floor(Math.random() * filledCells.length);
+    replaceImageInCell(filledCells[randomCellIndex], imageUrls, this.config.imageFitStyle);
   }
-  
+
   cleanup(): void {
     console.log(`Clearing ${this.refreshTimers.length} mosaic refresh timers`);
-    
+
     this.refreshTimers.forEach(timer => {
       window.clearInterval(timer);
     });
-    
+
     this.refreshTimers = [];
     this.mosaicCells = [];
+    this.pendingFillIndices = [];
   }
 }

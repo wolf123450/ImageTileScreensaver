@@ -38,7 +38,7 @@ export interface PreviewImagesResult {
 
 /** The IPC API surface exposed to renderer/settings code via window.electronAPI */
 export interface ScreensaverAPI {
-    closeScreensaver: () => void;
+    closeScreensaver: () => Promise<void>;
     getImages: () => Promise<string[]>;
     getConfig: () => Promise<ScreensaverConfig>;
     browseDirectory: () => Promise<string | null>;
