@@ -64,6 +64,9 @@ pub fn run() {
             commands::save_config,
             commands::get_log_path,
             commands::exit_screensaver,
+            commands::read_color_cache,
+            commands::write_color_cache,
+            commands::get_file_stats,
         ])
         .setup(move |app| {
             match run_mode {
