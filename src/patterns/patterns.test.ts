@@ -179,6 +179,8 @@ describe('MosaicPattern', () => {
 
   beforeEach(() => {
     container = document.createElement('div');
+    Object.defineProperty(container, 'clientWidth', { value: 800, configurable: true });
+    Object.defineProperty(container, 'clientHeight', { value: 600, configurable: true });
     document.body.appendChild(container);
   });
 
@@ -186,102 +188,33 @@ describe('MosaicPattern', () => {
     document.body.removeChild(container);
   });
 
-  it('creates mosaic cells based on density', () => {
+  it('creates a tile container on apply', () => {
     const pattern = new MosaicPattern();
-    pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 5 }));
+    pattern.init(makeConfig({ pattern: 'mosaic' }));
     pattern.apply(container, testImages);
 
-    const cells = container.querySelectorAll('div');
-    expect(cells.length).toBeGreaterThan(0);
-    expect(container.style.display).toBe('grid');
-  });
+    const tileContainer = container.querySelector('div');
+    expect(tileContainer).not.toBeNull();
+    expect(tileContainer!.style.position).toBe('absolute');
 
-  it('higher density produces more or equal cells', () => {
-    const lowPattern = new MosaicPattern();
-    lowPattern.init(makeConfig({ pattern: 'mosaic' }, { density: 2 }));
-    lowPattern.apply(container, testImages);
-    const lowCount = container.querySelectorAll('div').length;
-
-    container.innerHTML = '';
-    const highPattern = new MosaicPattern();
-    highPattern.init(makeConfig({ pattern: 'mosaic' }, { density: 9 }));
-    highPattern.apply(container, testImages);
-    const highCount = container.querySelectorAll('div').length;
-
-    expect(highCount).toBeGreaterThanOrEqual(lowCount);
-  });
-
-  it('builds the mosaic incrementally over time', () => {
-    vi.useFakeTimers();
-
-    const pattern = new MosaicPattern();
-    // Short changeInterval → fillInterval clamped to 200ms
-    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 2000 }, { density: 5 }));
-    pattern.apply(container, testImages);
-
-    const totalCells = container.querySelectorAll('div').length;
-    const initialImages = container.querySelectorAll('img').length;
-    expect(initialImages).toBe(1);
-
-    vi.advanceTimersByTime(1000);
-    const nextImages = container.querySelectorAll('img').length;
-
-    expect(nextImages).toBeGreaterThan(initialImages);
-    expect(nextImages).toBeLessThanOrEqual(totalCells);
-
-    pattern.cleanup();
-    vi.useRealTimers();
-  });
-
-  it('cleans up timers', () => {
-    const pattern = new MosaicPattern();
-    pattern.init(makeConfig({ pattern: 'mosaic' }, { density: 3 }));
-    pattern.apply(container, testImages);
     pattern.cleanup();
   });
 
-  it('eventually fills every cell with an image', () => {
-    vi.useFakeTimers();
-
+  it('cleans up timers and DOM', () => {
     const pattern = new MosaicPattern();
-    // Large changeInterval so hold phase doesn't expire during the test
-    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 60000 }, { density: 5 }));
+    pattern.init(makeConfig({ pattern: 'mosaic' }));
     pattern.apply(container, testImages);
-
-    // Advance enough to fill all cells (fill takes ≈ changeInterval)
-    vi.advanceTimersByTime(60000);
-
-    const cells = container.querySelectorAll('div');
-    cells.forEach(cell => {
-      expect(cell.querySelector('img')).not.toBeNull();
-    });
-
     pattern.cleanup();
-    vi.useRealTimers();
+
+    expect(container.querySelector('div')).toBeNull();
   });
 
-  it('clears and rebuilds after the hold phase', () => {
-    vi.useFakeTimers();
-
+  it('does nothing with empty image array', () => {
     const pattern = new MosaicPattern();
-    // changeInterval=500 → fill at 200ms ticks, hold 500ms, fade 600ms
-    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 500 }, { density: 3 }));
-    pattern.apply(container, testImages);
+    pattern.init(makeConfig({ pattern: 'mosaic' }));
+    pattern.apply(container, []);
 
-    // Capture a cell from the first layout immediately after apply
-    const firstCycleCell = container.querySelector('div')!;
-    expect(firstCycleCell).not.toBeNull();
-
-    // Advance past a full cycle: fill (~25 cells × 200ms max) + hold (500ms) + fade (600ms) = ~6100ms
-    vi.advanceTimersByTime(7000);
-
-    // The original cell should no longer be in the container (layout was rebuilt)
-    expect(container.contains(firstCycleCell)).toBe(false);
-    // New cells should exist
-    expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
-
-    pattern.cleanup();
-    vi.useRealTimers();
+    expect(container.children.length).toBe(0);
   });
 });
 

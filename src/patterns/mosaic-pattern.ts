@@ -1,39 +1,84 @@
 import { Pattern } from './index';
+import { PlacementEngine, createPriorityFn } from './placement-engine';
+import { ImageBuffer } from './image-buffer';
+import { computeTileDimensions } from './color-utils';
 import type { ScreensaverConfig } from '../types';
+import type { PlacedTile } from './placement-engine';
 
-export interface MosaicPatternConfig {
-  density: number;
+interface MosaicConfig {
+  placementSpeed: number;
+  tileAreaPercent: number;
+  tileMargin: number;
+  priorityFunction: 'center-out' | 'spiral-cw' | 'spiral-ccw' | 'random' | 'directional';
+  directionAngle: number;
+  startPosition: 'center' | 'random';
+  maxTiles: number;
+  holdDuration: number;
+  zoomEnabled: boolean;
+  maxZoomOut: number;
+  bufferSize: number;
   imageFitStyle: string;
-  changeInterval: number;
-  displayId?: number;
-  displayCount?: number;
+  referenceImage: string;
+  referenceImageDir: string;
+  colorMatchStrategy: 'average' | 'dominant';
 }
 
-/**
- * Mosaic pattern that creates a mosaic effect with images of different sizes.
- *
- * Lifecycle per cycle:
- *   1. FILLING  – cells are populated one-by-one in random order
- *   2. HOLDING  – the completed mosaic is displayed for `changeInterval` ms
- *   3. CLEARING – all images fade out, then a brand-new layout is generated
- */
 export class MosaicPattern implements Pattern {
   name: string = 'mosaic';
-  private config: MosaicPatternConfig = {
-    density: 5,
+
+  private config: MosaicConfig = {
+    placementSpeed: 200,
+    tileAreaPercent: 7,
+    tileMargin: 4,
+    priorityFunction: 'center-out',
+    directionAngle: 0,
+    startPosition: 'center',
+    maxTiles: 200,
+    holdDuration: 5000,
+    zoomEnabled: true,
+    maxZoomOut: 0.3,
+    bufferSize: 5,
     imageFitStyle: 'cover',
-    changeInterval: 10000
+    referenceImage: '',
+    referenceImageDir: '',
+    colorMatchStrategy: 'average',
   };
-  private refreshTimers: number[] = [];
-  private mosaicCells: HTMLDivElement[] = [];
-  private pendingFillIndices: number[] = [];
+
+  private engine: PlacementEngine | null = null;
+  private imageBuffer: ImageBuffer | null = null;
+  private container: HTMLElement | null = null;
+  private tileContainer: HTMLDivElement | null = null;
+  private referenceCtx: CanvasRenderingContext2D | null = null;
+  private referenceWidth: number = 0;
+  private referenceHeight: number = 0;
+  private tilesPlaced: number = 0;
+  private currentScale: number = 1;
+  private placementTimer: number | null = null;
+  private holdTimer: number | null = null;
+  private fadeTimer: number | null = null;
+  private imageUrls: string[] = [];
+  private viewportWidth: number = 0;
+  private viewportHeight: number = 0;
 
   init(config: ScreensaverConfig): void {
+    const opts = config.patternOptions ?? {};
     this.config = {
       ...this.config,
-      imageFitStyle: config.imageFitStyle,
-      changeInterval: config.changeInterval,
-      density: config.patternOptions?.density ?? this.config.density,
+      imageFitStyle: config.imageFitStyle || 'cover',
+      placementSpeed: opts.placementSpeed ?? this.config.placementSpeed,
+      tileAreaPercent: opts.tileAreaPercent ?? this.config.tileAreaPercent,
+      tileMargin: opts.tileMargin ?? this.config.tileMargin,
+      priorityFunction: opts.priorityFunction ?? this.config.priorityFunction,
+      directionAngle: opts.directionAngle ?? this.config.directionAngle,
+      startPosition: opts.startPosition ?? this.config.startPosition,
+      maxTiles: opts.maxTiles ?? this.config.maxTiles,
+      holdDuration: opts.holdDuration ?? this.config.holdDuration,
+      zoomEnabled: opts.zoomEnabled ?? this.config.zoomEnabled,
+      maxZoomOut: opts.maxZoomOut ?? this.config.maxZoomOut,
+      bufferSize: opts.bufferSize ?? this.config.bufferSize,
+      referenceImage: opts.referenceImage ?? this.config.referenceImage,
+      referenceImageDir: opts.referenceImageDir ?? this.config.referenceImageDir,
+      colorMatchStrategy: opts.colorMatchStrategy ?? this.config.colorMatchStrategy,
     };
   }
 
@@ -41,272 +86,269 @@ export class MosaicPattern implements Pattern {
     if (!imageUrls.length) return;
 
     this.cleanup();
-    this.buildLayout(container);
-    this.startFillCycle(container, imageUrls);
-  }
+    this.container = container;
+    this.imageUrls = imageUrls;
+    this.viewportWidth = container.clientWidth || 800;
+    this.viewportHeight = container.clientHeight || 600;
 
-  private buildLayout(container: HTMLElement): void {
-    container.innerHTML = '';
-    this.mosaicCells = [];
-
-    container.style.display = 'grid';
-
-    const layout = this.generateMosaicLayout();
-
-    container.style.gridTemplateColumns = layout.columns;
-    container.style.gridTemplateRows = layout.rows;
-    container.style.gap = '8px';
-    container.style.padding = '8px';
-
-    for (let i = 0; i < layout.cells.length; i++) {
-      const cellConfig = layout.cells[i];
-      const cell = document.createElement('div');
-      cell.style.gridColumnStart = cellConfig.colStart.toString();
-      cell.style.gridColumnEnd = cellConfig.colEnd.toString();
-      cell.style.gridRowStart = cellConfig.rowStart.toString();
-      cell.style.gridRowEnd = cellConfig.rowEnd.toString();
-      cell.style.overflow = 'hidden';
-      cell.style.position = 'relative';
-      cell.dataset.cellIndex = i.toString();
-      container.appendChild(cell);
-      this.mosaicCells.push(cell);
-    }
-  }
-
-  private startFillCycle(container: HTMLElement, imageUrls: string[]): void {
-    this.pendingFillIndices = this.buildShuffledIndices(this.mosaicCells.length);
-
-    // Seed one cell immediately so the screen isn't blank.
-    this.fillNextMosaicCell(imageUrls);
-
-    const totalCells = this.mosaicCells.length;
-    const fillInterval = Math.max(200, this.config.changeInterval / totalCells);
-
-    const fillTimer = window.setInterval(() => {
-      if (this.fillNextMosaicCell(imageUrls)) {
-        return; // still filling
-      }
-
-      // All cells filled – stop filling and enter hold phase.
-      window.clearInterval(fillTimer);
-      this.refreshTimers = this.refreshTimers.filter(t => t !== fillTimer);
-
-      const holdTimer = window.setTimeout(() => {
-        this.refreshTimers = this.refreshTimers.filter(t => t !== holdTimer);
-        this.fadeOutAllCells(() => {
-          this.buildLayout(container);
-          this.startFillCycle(container, imageUrls);
-        });
-      }, this.config.changeInterval);
-      this.refreshTimers.push(holdTimer);
-    }, fillInterval);
-
-    this.refreshTimers.push(fillTimer);
-  }
-
-  private fadeOutAllCells(onComplete: () => void): void {
-    for (const cell of this.mosaicCells) {
-      const img = cell.querySelector('img');
-      if (img) {
-        img.style.opacity = '0';
-      }
-    }
-    // Wait for the CSS transition (0.5s) to finish before rebuilding.
-    const fadeTimer = window.setTimeout(onComplete, 600);
-    this.refreshTimers.push(fadeTimer);
-  }
-  
-  private generateMosaicLayout() {
-    // Determine grid size based on density
-    // Higher density means more cells of varying sizes
-    const density = this.config.density;
-    
-    // Base grid size - increases with density
-    const baseSize = 4 + Math.floor(density / 2);
-    
-    // Generate a grid template with varying cell sizes
-    const columns = new Array(baseSize).fill('1fr').join(' ');
-    const rows = new Array(baseSize).fill('1fr').join(' ');
-    
-    // Generate cell configurations
-    const cells: Array<{
-      colStart: number;
-      colEnd: number;
-      rowStart: number;
-      rowEnd: number;
-    }> = [];
-    
-    // Higher density means more variation in cell sizes
-    // Create a few large cells first
-    const largeCellCount = Math.max(1, Math.floor((10 - density) / 3));
-    
-    // Track occupied positions
-    const occupied = new Set<string>();
-    
-    // Helper to check if a position is available
-    const isAvailable = (col: number, row: number) => {
-      return !occupied.has(`${col}-${row}`);
-    };
-    
-    // Helper to mark positions as occupied
-    const markOccupied = (colStart: number, colEnd: number, rowStart: number, rowEnd: number) => {
-      for (let c = colStart; c < colEnd; c++) {
-        for (let r = rowStart; r < rowEnd; r++) {
-          occupied.add(`${c}-${r}`);
-        }
-      }
-    };
-    
-    // Create large cells
-    for (let i = 0; i < largeCellCount; i++) {
-      // Try to find an available position for a large cell
-      let attempts = 0;
-      let placed = false;
-      
-      while (!placed && attempts < 20) {
-        const size = Math.min(3, Math.floor(Math.random() * 2) + 2);
-        const colStart = Math.floor(Math.random() * (baseSize - size + 1)) + 1;
-        const rowStart = Math.floor(Math.random() * (baseSize - size + 1)) + 1;
-        const colEnd = colStart + size;
-        const rowEnd = rowStart + size;
-        
-        // Check if all positions are available
-        let available = true;
-        for (let c = colStart; c < colEnd; c++) {
-          for (let r = rowStart; r < rowEnd; r++) {
-            if (!isAvailable(c, r)) {
-              available = false;
-              break;
-            }
-          }
-          if (!available) break;
-        }
-        
-        if (available) {
-          cells.push({
-            colStart,
-            colEnd,
-            rowStart,
-            rowEnd
-          });
-          
-          markOccupied(colStart, colEnd, rowStart, rowEnd);
-          placed = true;
-        }
-        
-        attempts++;
-      }
-    }
-    
-    // Create medium cells
-    const mediumCellTarget = Math.floor(density / 2) + 3;
-    let mediumCellCount = 0;
-    
-    for (let i = 0; i < 30 && mediumCellCount < mediumCellTarget; i++) {
-      const size = 2;
-      const colStart = Math.floor(Math.random() * (baseSize - size + 1)) + 1;
-      const rowStart = Math.floor(Math.random() * (baseSize - size + 1)) + 1;
-      const colEnd = colStart + size;
-      const rowEnd = rowStart + size;
-      
-      // Check if all positions are available
-      let available = true;
-      for (let c = colStart; c < colEnd; c++) {
-        for (let r = rowStart; r < rowEnd; r++) {
-          if (!isAvailable(c, r)) {
-            available = false;
-            break;
-          }
-        }
-        if (!available) break;
-      }
-      
-      if (available) {
-        cells.push({
-          colStart,
-          colEnd,
-          rowStart,
-          rowEnd
-        });
-        
-        markOccupied(colStart, colEnd, rowStart, rowEnd);
-        mediumCellCount++;
-      }
-    }
-    
-    // Fill remaining spaces with single cells
-    for (let col = 1; col <= baseSize; col++) {
-      for (let row = 1; row <= baseSize; row++) {
-        if (isAvailable(col, row)) {
-          cells.push({
-            colStart: col,
-            colEnd: col + 1,
-            rowStart: row,
-            rowEnd: row + 1
-          });
-          
-          markOccupied(col, col + 1, row, row + 1);
-        }
-      }
-    }
-    
-    return {
-      columns,
-      rows,
-      cells
-    };
-  }
-  
-  private buildShuffledIndices(count: number): number[] {
-    const indices = Array.from({ length: count }, (_, idx) => idx);
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    return indices;
-  }
-
-  private createCellImage(imageUrls: string[]): HTMLImageElement {
-    const randomImageIndex = Math.floor(Math.random() * imageUrls.length);
-    const img = document.createElement('img');
-    img.src = imageUrls[randomImageIndex];
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = this.config.imageFitStyle;
-    img.style.transition = 'opacity 0.5s ease-in-out';
-    return img;
-  }
-
-  private fillNextMosaicCell(imageUrls: string[]): boolean {
-    while (this.pendingFillIndices.length > 0) {
-      const nextIndex = this.pendingFillIndices.shift();
-      if (nextIndex === undefined) return false;
-
-      const cell = this.mosaicCells[nextIndex];
-      if (!cell || cell.querySelector('img')) {
-        continue;
-      }
-
-      const img = this.createCellImage(imageUrls);
-      img.style.opacity = '0';
-      cell.appendChild(img);
-      requestAnimationFrame(() => {
-        img.style.opacity = '1';
-      });
-      return true;
-    }
-
-    return false;
+    this.startCycle();
   }
 
   cleanup(): void {
-    this.refreshTimers.forEach(timer => {
-      window.clearInterval(timer);
-      window.clearTimeout(timer);
+    if (this.placementTimer !== null) {
+      window.clearInterval(this.placementTimer);
+      this.placementTimer = null;
+    }
+    if (this.holdTimer !== null) {
+      window.clearTimeout(this.holdTimer);
+      this.holdTimer = null;
+    }
+    if (this.fadeTimer !== null) {
+      window.clearTimeout(this.fadeTimer);
+      this.fadeTimer = null;
+    }
+    if (this.tileContainer && this.container) {
+      this.container.removeChild(this.tileContainer);
+    }
+    this.tileContainer = null;
+    this.engine = null;
+    this.imageBuffer = null;
+    this.referenceCtx = null;
+    this.tilesPlaced = 0;
+    this.currentScale = 1;
+  }
+
+  private async startCycle(): Promise<void> {
+    if (!this.container) return;
+
+    // Create tile container
+    this.tileContainer = document.createElement('div');
+    this.tileContainer.style.position = 'absolute';
+    this.tileContainer.style.left = '50%';
+    this.tileContainer.style.top = '50%';
+    this.tileContainer.style.transformOrigin = '0 0';
+    this.tileContainer.style.transform = 'translate(-50%, -50%) scale(1)';
+    this.tileContainer.style.transition = 'transform 0.5s ease-out';
+    this.container.style.overflow = 'hidden';
+    this.container.style.position = 'relative';
+    this.container.appendChild(this.tileContainer);
+
+    // Init engine
+    const priorityFn = createPriorityFn(
+      this.config.priorityFunction,
+      this.config.directionAngle,
+    );
+    this.engine = new PlacementEngine(priorityFn);
+
+    // Init image buffer
+    this.imageBuffer = new ImageBuffer();
+    this.imageBuffer.init(this.imageUrls, this.viewportWidth, this.viewportHeight, {
+      tileAreaPercent: this.config.tileAreaPercent,
+      bufferSize: this.config.bufferSize,
+      colorMatchStrategy: this.config.colorMatchStrategy,
     });
 
-    this.refreshTimers = [];
-    this.mosaicCells = [];
-    this.pendingFillIndices = [];
+    // Load reference image if photomosaic mode
+    if (this.config.referenceImage || this.config.referenceImageDir) {
+      await this.loadReferenceImage();
+    }
+
+    // Pre-fill buffer
+    await this.imageBuffer.prefill();
+
+    // Seed first tile
+    const firstImg = this.imageBuffer.next();
+    if (!firstImg) return;
+
+    const dims = computeTileDimensions(
+      firstImg.naturalWidth,
+      firstImg.naturalHeight,
+      this.imageBuffer.targetArea,
+    );
+    const margin = this.config.tileMargin;
+    const firstTile = this.engine.seedFirstTile(
+      dims.width + margin,
+      dims.height + margin,
+      this.config.startPosition,
+      this.viewportWidth,
+      this.viewportHeight,
+    );
+    this.renderTile(firstTile, firstImg.url, dims.width, dims.height, margin);
+    this.tilesPlaced = 1;
+
+    // Start placement loop
+    this.placementTimer = window.setInterval(() => this.tick(), this.config.placementSpeed);
+  }
+
+  private tick(): void {
+    if (!this.engine || !this.imageBuffer || !this.tileContainer) return;
+
+    // Get next image
+    let img;
+    if (this.referenceCtx) {
+      const corner = this.engine.peekCorner();
+      if (!corner) {
+        this.stopFilling();
+        return;
+      }
+      img = this.imageBuffer.nextForPosition(
+        corner.x, corner.y,
+        this.engine.getWorldBounds(),
+        this.referenceCtx,
+        this.referenceWidth,
+        this.referenceHeight,
+      );
+    } else {
+      img = this.imageBuffer.next();
+    }
+
+    if (!img) {
+      if (!this.imageBuffer.hasMore()) {
+        this.stopFilling();
+      }
+      return;
+    }
+
+    const dims = computeTileDimensions(
+      img.naturalWidth,
+      img.naturalHeight,
+      this.imageBuffer.targetArea,
+    );
+    const margin = this.config.tileMargin;
+    const tile = this.engine.placeTile(dims.width + margin, dims.height + margin);
+
+    if (!tile) {
+      this.stopFilling();
+      return;
+    }
+
+    this.renderTile(tile, img.url, dims.width, dims.height, margin);
+    this.tilesPlaced++;
+
+    if (this.config.zoomEnabled) {
+      this.updateZoom();
+    }
+
+    if (this.config.maxTiles > 0 && this.tilesPlaced >= this.config.maxTiles) {
+      this.stopFilling();
+      return;
+    }
+
+    if (this.config.zoomEnabled && this.currentScale <= this.config.maxZoomOut) {
+      this.stopFilling();
+      return;
+    }
+  }
+
+  private renderTile(
+    tile: PlacedTile,
+    url: string,
+    displayWidth: number,
+    displayHeight: number,
+    margin: number,
+  ): void {
+    if (!this.tileContainer) return;
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.position = 'absolute';
+    img.style.left = `${tile.x + margin / 2}px`;
+    img.style.top = `${tile.y + margin / 2}px`;
+    img.style.width = `${displayWidth}px`;
+    img.style.height = `${displayHeight}px`;
+    img.style.objectFit = this.config.imageFitStyle;
+    img.style.opacity = '0';
+    img.style.transition = 'opacity 0.3s ease-in-out';
+
+    this.tileContainer.appendChild(img);
+    requestAnimationFrame(() => {
+      img.style.opacity = '1';
+    });
+  }
+
+  private updateZoom(): void {
+    if (!this.engine || !this.tileContainer) return;
+
+    const bounds = this.engine.getWorldBounds();
+    const worldW = bounds.maxX - bounds.minX;
+    const worldH = bounds.maxY - bounds.minY;
+
+    if (worldW <= 0 || worldH <= 0) return;
+
+    const scaleX = this.viewportWidth / worldW;
+    const scaleY = this.viewportHeight / worldH;
+    let targetScale = Math.min(scaleX, scaleY, 1.0);
+    targetScale = Math.max(targetScale, this.config.maxZoomOut);
+
+    this.currentScale = targetScale;
+    this.tileContainer.style.transform =
+      `translate(-50%, -50%) scale(${targetScale})`;
+  }
+
+  private stopFilling(): void {
+    if (this.placementTimer !== null) {
+      window.clearInterval(this.placementTimer);
+      this.placementTimer = null;
+    }
+
+    this.holdTimer = window.setTimeout(() => {
+      this.holdTimer = null;
+      this.fadeOutAndRebuild();
+    }, this.config.holdDuration);
+  }
+
+  private fadeOutAndRebuild(): void {
+    if (!this.tileContainer) return;
+
+    const images = this.tileContainer.querySelectorAll('img');
+    images.forEach(img => {
+      img.style.opacity = '0';
+    });
+
+    this.fadeTimer = window.setTimeout(() => {
+      this.fadeTimer = null;
+
+      if (this.tileContainer && this.container) {
+        this.container.removeChild(this.tileContainer);
+      }
+      this.tileContainer = null;
+      this.engine = null;
+      this.imageBuffer = null;
+      this.tilesPlaced = 0;
+      this.currentScale = 1;
+
+      this.startCycle();
+    }, 600);
+  }
+
+  private async loadReferenceImage(): Promise<void> {
+    let refUrl = this.config.referenceImage;
+
+    if (refUrl === '__random__' || (!refUrl && !this.config.referenceImageDir)) {
+      refUrl = this.imageUrls[Math.floor(Math.random() * this.imageUrls.length)];
+    } else if (!refUrl && this.config.referenceImageDir) {
+      refUrl = this.imageUrls[Math.floor(Math.random() * this.imageUrls.length)];
+    }
+
+    if (!refUrl) return;
+
+    return new Promise<void>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        this.referenceCtx = ctx;
+        this.referenceWidth = canvas.width;
+        this.referenceHeight = canvas.height;
+        resolve();
+      };
+      img.onerror = () => {
+        resolve();
+      };
+      img.src = refUrl;
+    });
   }
 }
