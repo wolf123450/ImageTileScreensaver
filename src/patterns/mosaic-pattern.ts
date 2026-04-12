@@ -5,6 +5,9 @@ import { computeTileDimensions } from './color-utils';
 import type { ScreensaverConfig } from '../types';
 import type { PlacedTile } from './placement-engine';
 
+/** Minimum tile dimension in screen-space pixels. Tiles smaller than this are imperceptible. */
+export const MIN_TILE_SCREEN_PX = 16;
+
 interface MosaicConfig {
   placementSpeed: number;
   tileAreaPercent: number;
@@ -215,6 +218,15 @@ export class MosaicPattern implements Pattern {
       this.imageBuffer.targetArea,
     );
     const margin = this.config.tileMargin;
+
+    // Screen-space check: skip placement if tile would be too small to perceive
+    // World → Screen: screenPx = worldPx * currentScale
+    const tileScreenWidth = dims.width * this.currentScale;
+    if (tileScreenWidth < MIN_TILE_SCREEN_PX) {
+      this.stopFilling();
+      return;
+    }
+
     const tile = this.engine.placeTile(dims.width + margin, dims.height + margin);
 
     if (!tile) {
