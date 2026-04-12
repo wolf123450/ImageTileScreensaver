@@ -30,6 +30,21 @@ pub struct PatternOptions {
     pub random_count: Option<u32>,
     pub allow_overlap: Option<bool>,
     pub slide_speed: Option<u32>,
+    // Mosaic placement engine options
+    pub placement_speed: Option<u32>,
+    pub tile_area_percent: Option<u32>,
+    pub tile_margin: Option<u32>,
+    pub priority_function: Option<String>,
+    pub direction_angle: Option<u32>,
+    pub start_position: Option<String>,
+    pub max_tiles: Option<u32>,
+    pub hold_duration: Option<u32>,
+    pub zoom_enabled: Option<bool>,
+    pub max_zoom_out: Option<f64>,
+    pub buffer_size: Option<u32>,
+    pub reference_image: Option<String>,
+    pub reference_image_dir: Option<String>,
+    pub color_match_strategy: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,12 +127,10 @@ fn migrate_config(config: &mut ScreensaverConfig) -> bool {
     if config.version < CURRENT_CONFIG_VERSION {
         if config.image_fit_style.is_empty() {
             config.image_fit_style = "cover".to_string();
-            changed = true;
         }
 
         if config.transition.effect.is_empty() {
             config.transition.effect = "fade".to_string();
-            changed = true;
         }
 
         config.version = CURRENT_CONFIG_VERSION;
