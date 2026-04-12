@@ -10,7 +10,7 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { ScreensaverAPI, ScreensaverConfig, PreviewImagesResult } from './types';
+import type { ScreensaverAPI, ScreensaverConfig, PreviewImagesResult, ColorCacheData, FileStatEntry } from './types';
 
 /** Convert an array of local file paths to asset protocol URLs */
 function toAssetUrls(paths: string[]): string[] {
@@ -56,6 +56,24 @@ const tauriAPI: ScreensaverAPI = {
     },
 
     getLogPath: () => invoke<string>('get_log_path'),
+
+    readColorCache: async () => {
+        const raw = await invoke<string>('read_color_cache');
+        try {
+            return JSON.parse(raw) as ColorCacheData;
+        } catch {
+            return { version: 1, entries: {} };
+        }
+    },
+
+    writeColorCache: (data: ColorCacheData) =>
+        invoke('write_color_cache', { data: JSON.stringify(data) }).then(() => {}),
+
+    getFileStats: (paths: string[]) =>
+        invoke<FileStatEntry[]>('get_file_stats', { paths }),
+
+    getRawImagePaths: () =>
+        invoke<string[]>('get_images'),
 };
 
 // Expose as window.electronAPI so existing code works unchanged
