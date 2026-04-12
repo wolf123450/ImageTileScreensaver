@@ -1,5 +1,4 @@
 import { Pattern } from './index';
-import { replaceImageInCell } from './image-utils';
 import type { ScreensaverConfig } from '../types';
 
 export interface MosaicPatternConfig {
@@ -11,12 +10,17 @@ export interface MosaicPatternConfig {
 }
 
 /**
- * Mosaic pattern that creates a mosaic effect with images of different sizes
+ * Mosaic pattern that creates a mosaic effect with images of different sizes.
+ *
+ * Lifecycle per cycle:
+ *   1. FILLING  – cells are populated one-by-one in random order
+ *   2. HOLDING  – the completed mosaic is displayed for `changeInterval` ms
+ *   3. CLEARING – all images fade out, then a brand-new layout is generated
  */
 export class MosaicPattern implements Pattern {
   name: string = 'mosaic';
   private config: MosaicPatternConfig = {
-    density: 5, // Medium density by default (1-10 scale)
+    density: 5,
     imageFitStyle: 'cover',
     changeInterval: 10000
   };
@@ -36,34 +40,26 @@ export class MosaicPattern implements Pattern {
   apply(container: HTMLElement, imageUrls: string[]): void {
     if (!imageUrls.length) return;
 
-    console.log(`Applying mosaic pattern with density: ${this.config.density}`);
-
-    // Clean up any previous state
     this.cleanup();
+    this.buildLayout(container);
+    this.startFillCycle(container, imageUrls);
+  }
 
-    // Clear the container
+  private buildLayout(container: HTMLElement): void {
     container.innerHTML = '';
-
-    // Reset mosaic cells array
     this.mosaicCells = [];
 
-    // Set container to be a grid for mosaic layout
     container.style.display = 'grid';
 
-    // Generate mosaic layout based on density
     const layout = this.generateMosaicLayout();
 
-    // Apply grid template to container
     container.style.gridTemplateColumns = layout.columns;
     container.style.gridTemplateRows = layout.rows;
     container.style.gap = '8px';
     container.style.padding = '8px';
 
-    // Create empty mosaic cells first; images will be filled over time.
     for (let i = 0; i < layout.cells.length; i++) {
       const cellConfig = layout.cells[i];
-
-      // Create cell container
       const cell = document.createElement('div');
       cell.style.gridColumnStart = cellConfig.colStart.toString();
       cell.style.gridColumnEnd = cellConfig.colEnd.toString();
@@ -72,23 +68,52 @@ export class MosaicPattern implements Pattern {
       cell.style.overflow = 'hidden';
       cell.style.position = 'relative';
       cell.dataset.cellIndex = i.toString();
-
       container.appendChild(cell);
-
-      // Store the cell for later updates
       this.mosaicCells.push(cell);
     }
+  }
 
-    // Start with one tile visible, then fill the rest incrementally.
+  private startFillCycle(container: HTMLElement, imageUrls: string[]): void {
     this.pendingFillIndices = this.buildShuffledIndices(this.mosaicCells.length);
+
+    // Seed one cell immediately so the screen isn't blank.
     this.fillNextMosaicCell(imageUrls);
 
-    // Calculate individual refresh interval based on total cell count
-    const totalCells = layout.cells.length;
-    const individualRefreshInterval = Math.max(200, this.config.changeInterval / totalCells);
+    const totalCells = this.mosaicCells.length;
+    const fillInterval = Math.max(200, this.config.changeInterval / totalCells);
 
-    // Set up continuous timer to fill, then refresh one cell at a time.
-    this.setupMosaicRefreshTimer(imageUrls, individualRefreshInterval);
+    const fillTimer = window.setInterval(() => {
+      if (this.fillNextMosaicCell(imageUrls)) {
+        return; // still filling
+      }
+
+      // All cells filled – stop filling and enter hold phase.
+      window.clearInterval(fillTimer);
+      this.refreshTimers = this.refreshTimers.filter(t => t !== fillTimer);
+
+      const holdTimer = window.setTimeout(() => {
+        this.refreshTimers = this.refreshTimers.filter(t => t !== holdTimer);
+        this.fadeOutAllCells(() => {
+          this.buildLayout(container);
+          this.startFillCycle(container, imageUrls);
+        });
+      }, this.config.changeInterval);
+      this.refreshTimers.push(holdTimer);
+    }, fillInterval);
+
+    this.refreshTimers.push(fillTimer);
+  }
+
+  private fadeOutAllCells(onComplete: () => void): void {
+    for (const cell of this.mosaicCells) {
+      const img = cell.querySelector('img');
+      if (img) {
+        img.style.opacity = '0';
+      }
+    }
+    // Wait for the CSS transition (0.5s) to finish before rebuilding.
+    const fadeTimer = window.setTimeout(onComplete, 600);
+    this.refreshTimers.push(fadeTimer);
   }
   
   private generateMosaicLayout() {
@@ -232,23 +257,6 @@ export class MosaicPattern implements Pattern {
     };
   }
   
-  private setupMosaicRefreshTimer(imageUrls: string[], interval: number): void {
-    if (this.mosaicCells.length === 0 || imageUrls.length === 0) return;
-
-    console.log(`Setting up mosaic refresh with interval: ${interval}ms per cell`);
-
-    const continuousTimer = window.setInterval(() => {
-      // Fill empty cells first so the layout builds up over time.
-      if (this.fillNextMosaicCell(imageUrls)) {
-        return;
-      }
-
-      this.replaceRandomMosaicImage(imageUrls);
-    }, interval);
-
-    this.refreshTimers.push(continuousTimer);
-  }
-
   private buildShuffledIndices(count: number): number[] {
     const indices = Array.from({ length: count }, (_, idx) => idx);
     for (let i = indices.length - 1; i > 0; i--) {
@@ -291,21 +299,10 @@ export class MosaicPattern implements Pattern {
     return false;
   }
 
-  private replaceRandomMosaicImage(imageUrls: string[]): void {
-    if (this.mosaicCells.length === 0 || imageUrls.length === 0) return;
-
-    const filledCells = this.mosaicCells.filter(cell => cell.querySelector('img'));
-    if (filledCells.length === 0) return;
-
-    const randomCellIndex = Math.floor(Math.random() * filledCells.length);
-    replaceImageInCell(filledCells[randomCellIndex], imageUrls, this.config.imageFitStyle);
-  }
-
   cleanup(): void {
-    console.log(`Clearing ${this.refreshTimers.length} mosaic refresh timers`);
-
     this.refreshTimers.forEach(timer => {
       window.clearInterval(timer);
+      window.clearTimeout(timer);
     });
 
     this.refreshTimers = [];

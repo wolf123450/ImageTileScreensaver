@@ -215,7 +215,8 @@ describe('MosaicPattern', () => {
     vi.useFakeTimers();
 
     const pattern = new MosaicPattern();
-    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 1000 }, { density: 5 }));
+    // Short changeInterval → fillInterval clamped to 200ms
+    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 2000 }, { density: 5 }));
     pattern.apply(container, testImages);
 
     const totalCells = container.querySelectorAll('div').length;
@@ -243,15 +244,41 @@ describe('MosaicPattern', () => {
     vi.useFakeTimers();
 
     const pattern = new MosaicPattern();
-    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 1000 }, { density: 5 }));
+    // Large changeInterval so hold phase doesn't expire during the test
+    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 60000 }, { density: 5 }));
     pattern.apply(container, testImages);
 
-    const cells = container.querySelectorAll('div');
-    vi.advanceTimersByTime(10000);
+    // Advance enough to fill all cells (fill takes ≈ changeInterval)
+    vi.advanceTimersByTime(60000);
 
+    const cells = container.querySelectorAll('div');
     cells.forEach(cell => {
       expect(cell.querySelector('img')).not.toBeNull();
     });
+
+    pattern.cleanup();
+    vi.useRealTimers();
+  });
+
+  it('clears and rebuilds after the hold phase', () => {
+    vi.useFakeTimers();
+
+    const pattern = new MosaicPattern();
+    // changeInterval=500 → fill at 200ms ticks, hold 500ms, fade 600ms
+    pattern.init(makeConfig({ pattern: 'mosaic', changeInterval: 500 }, { density: 3 }));
+    pattern.apply(container, testImages);
+
+    // Capture a cell from the first layout immediately after apply
+    const firstCycleCell = container.querySelector('div')!;
+    expect(firstCycleCell).not.toBeNull();
+
+    // Advance past a full cycle: fill (~25 cells × 200ms max) + hold (500ms) + fade (600ms) = ~6100ms
+    vi.advanceTimersByTime(7000);
+
+    // The original cell should no longer be in the container (layout was rebuilt)
+    expect(container.contains(firstCycleCell)).toBe(false);
+    // New cells should exist
+    expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
 
     pattern.cleanup();
     vi.useRealTimers();
