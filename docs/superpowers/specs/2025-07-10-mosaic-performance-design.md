@@ -4,10 +4,27 @@
 **Status:** Approved  
 **Scope:** Two independent performance improvements for the mosaic screensaver pattern
 
+## Coordinate Spaces
+
+The mosaic system uses four coordinate spaces. All use pixel units but represent different things:
+
+| Space | Origin | Units | Used By |
+|---|---|---|---|
+| **Screen space** | Top-left of viewport | Physical screen pixels | Viewport dimensions, final rendered output |
+| **World space** | Center (0, 0) | Logical pixels (= screen pixels at 100% zoom) | PlacementEngine tile positions, tile dimensions from `computeTileDimensions()` |
+| **Subimage space** | Top-left of source image | Source image pixels | `img.naturalWidth`, `img.naturalHeight` |
+| **Reference image space** | Top-left of reference image | Reference image pixels | Photomosaic color sampling via `referenceCtx` |
+
+**Key relationships:**
+- World → Screen: `screenPx = worldPx * currentScale` (where `currentScale` ∈ [maxZoomOut, 1.0])
+- `targetArea` is computed from screen-space viewport area but produces world-space tile dimensions (equivalent at 100% zoom since world space is initialized from viewport dimensions)
+- `computeTileDimensions()` returns world-space width/height
+- PlacementEngine operates entirely in world space
+
 ## Problem Statement
 
 1. **Photomosaic freeze:** When photomosaic mode is enabled with thousands of images (~4760), computing `averageColor`/`dominantColor` per image during `ImageBuffer.loadNext()` blocks the rendering loop, freezing the screensaver after the first tile.
-2. **Deep zoom DOM overload:** At deep zoom-out levels (e.g., 1.5625%), the grid has far more cells than needed. Placing thousands of tiles that render at <2px wastes DOM resources.
+2. **Deep zoom DOM overload:** At deep zoom-out levels (e.g., 1.5625%), the grid has far more cells than needed. Placing thousands of tiles that render at <2px **screen space** wastes DOM resources.
 
 ## Feature 1: Color Cache & Precomputation
 
@@ -46,27 +63,41 @@ Three new Tauri commands in `src-tauri/src/commands.rs`:
 
 ### Web Worker Precomputation
 
-**Trigger:** User clicks Save in settings with photomosaic enabled.
+**Trigger:** User clicks a dedicated "Bake Color Cache" button in the photomosaic settings section.
+
+This is separate from Save. The user can bake at any time; saving does **not** trigger precomputation.
 
 **Flow:**
-1. Settings UI intercepts the save action
+1. User clicks "Bake Color Cache" button
 2. Reads existing cache via `read_color_cache` Tauri command
 3. Gets image list from existing `list_images` command
 4. Gets file stats via `get_file_stats` for all images
 5. Filters to images needing (re)computation (missing or stale cache entries)
-6. If no images need computation, proceeds directly to save
+6. If no images need computation, shows "Cache is up to date" and returns
 7. Spawns Web Worker (`src/configui/color-worker.ts`) with the filtered image list
 8. Worker processes images in batches (~50 at a time):
    - Fetches image via `fetch()`, creates `ImageBitmap` via `createImageBitmap()`
    - Draws to `OffscreenCanvas`, samples pixels for average + dominant color
    - Posts `{ path, avgColor, domColor }` per image + batch progress
-9. Settings UI shows progress: `"Computing colors: 1234 / 4760 (26%)"`
+9. Bake button is replaced with progress bar + Cancel button: `"Computing colors: 1234 / 4760 (26%)"`
 10. On completion, merges new entries with existing cache, writes via `write_color_cache`
-11. Proceeds with normal config save
+11. Updates cache status indicator to "all clear"
 
-**Cancel behavior:** If cancelled, saves config without updating the cache. Screensaver falls back to on-the-fly computation (existing behavior).
+**Cancel behavior:** If cancelled, writes whatever has been computed so far to the cache (partial progress is preserved). Status indicator updates to reflect remaining uncomputed count.
 
 **Error handling:** If an image fails to load (corrupt, unsupported format), skip it and continue. Log to console.
+
+### Cache Status Indicator
+
+A status banner in the photomosaic settings section that shows cache health:
+
+- **All clear** (green): All images in the configured directory have valid cache entries. `"Color cache up to date (4760 images)"`
+- **Warning** (yellow): Some images are missing or stale. `"Color cache incomplete: 234 of 4760 images need recomputation. Click Bake to update."`
+- **Error** (red): No cache exists yet. `"No color cache found. Click Bake to precompute colors for photomosaic mode."`
+
+**When checked:** On page load (when photomosaic is enabled) and after bake completes. The check reads the cache file and compares against the current image list + file stats.
+
+**On save:** If photomosaic is enabled and cache is incomplete, save proceeds normally but the status indicator remains visible as a warning. The screensaver will fall back to on-the-fly computation for uncached images.
 
 ### Worker File
 
@@ -80,12 +111,14 @@ Dedicated Web Worker that:
 - Posts result messages: `{ type: 'result', path: string, avgColor: string, domColor: string }`
 - Posts completion message: `{ type: 'done' }`
 
-### Progress UI
+### Bake UI
 
-When precomputation is active:
-- Save button is replaced with a progress bar + Cancel button
-- Progress text: `"Computing colors: N / Total (X%)"`
-- On cancel or completion, Save button reappears
+In the photomosaic settings section, below the color match strategy dropdown:
+
+1. **Cache status indicator** — always visible when photomosaic is enabled (green/yellow/red as described above)
+2. **"Bake Color Cache" button** — triggers the precomputation flow
+3. **During bake:** button is replaced with progress bar + Cancel button showing `"Computing colors: N / Total (X%)"`
+4. **After bake (or cancel):** button reappears, status indicator updates
 
 ### ImageBuffer Changes
 
@@ -106,51 +139,56 @@ Automatically stop placing tiles when they would render below a perceivable size
 
 ### Mechanism
 
-**Constant:** `MIN_TILE_PIXELS = 16` — minimum rendered tile dimension in pixels (internal, not user-configurable).
+**Constant:** `MIN_TILE_SCREEN_PX = 16` — minimum rendered tile dimension in **screen-space** pixels (internal, not user-configurable).
 
 **Check location:** `MosaicPattern.tick()`, after computing `currentScale` but before calling `engine.next()`.
 
 **Logic:**
 ```typescript
-const renderedTileSize = tilePixelSize * this.currentScale;
-if (renderedTileSize < MIN_TILE_PIXELS) {
-  // Treat mosaic as full — stop placing tiles, proceed to hold/zoom
+// tileWorldWidth is in world-space pixels (from computeTileDimensions)
+// currentScale converts world → screen: screenPx = worldPx * currentScale
+const tileScreenWidth = tileWorldWidth * this.currentScale;
+if (tileScreenWidth < MIN_TILE_SCREEN_PX) {
+  // Tile would be too small to perceive in screen space — stop placing
   this.startHold();
   return;
 }
 ```
 
+Note: `tileWorldWidth` comes from `computeTileDimensions()`, which computes world-space dimensions from `targetArea` (itself derived from screen-space viewport area × tileAreaPercent). At 100% zoom, world pixels equal screen pixels. At deeper zoom levels, `currentScale < 1.0` shrinks tiles on screen.
+
 ### Behavior by Zoom Level
 
-Example with 7% tile area on 1920×1080 (tile ≈ 134px):
+Example with 7% tile area on 1920×1080 (world-space tile ≈ 134px):
 
-| Zoom Level | Rendered Size | Tiles Placed | Effect |
+| Zoom Level | currentScale | Screen-Space Size | Effect |
 |---|---|---|---|
-| 100% | 134px | Normal | No change |
-| 50% | 67px | Normal | No change |
-| 25% | 33px | Normal | No change |
-| 12.5% | 17px | Normal | Just above threshold |
-| 6.25% | 8px | Stops early | Below 16px |
-| 3.125% | 4px | Very few | Well below |
-| 1.5625% | 2px | Almost none | Tiles invisible |
+| 100% | 1.0 | 134px | No change |
+| 50% | 0.5 | 67px | No change |
+| 25% | 0.25 | 33px | No change |
+| 12.5% | 0.125 | 17px | Just above threshold |
+| 6.25% | 0.0625 | 8px | Below 16px — stops early |
+| 3.125% | 0.03125 | 4px | Well below |
+| 1.5625% | 0.015625 | 2px | Tiles invisible |
 
 ### Impact
 
 - No new settings or UI changes
-- Fully automatic — users see the same visual result, the screensaver just avoids creating tiles too small to perceive
+- Fully automatic — users see the same visual result, the screensaver just avoids creating tiles too small to perceive on screen
 - Reduces DOM element count at deep zoom from potentially thousands to a reasonable number
-- Preserves placement order — the engine still picks tile positions by priority, it just stops earlier
+- Preserves placement order — the engine still picks world-space tile positions by priority, it just stops when the next tile would be imperceptible in screen space
 
 ## Testing
 
 ### Color Cache
 - Unit test: cache invalidation logic (mtime/size mismatch triggers recompute)
 - Unit test: ImageBuffer uses cache when available, falls back on miss
-- Manual test: settings save with photomosaic enabled shows progress and creates cache file
+- Manual test: bake button triggers precomputation with progress bar, creates cache file
+- Manual test: cache status indicator shows correct state (all clear / warning / error)
 
 ### Adaptive Tiles
-- Unit test: MosaicPattern stops placing tiles when rendered size < MIN_TILE_PIXELS
-- Unit test: at 100% zoom, behavior unchanged (renderedTileSize above threshold)
+- Unit test: MosaicPattern stops placing tiles when screen-space rendered size < MIN_TILE_SCREEN_PX
+- Unit test: at 100% zoom (currentScale=1.0), behavior unchanged (screen-space tile size above threshold)
 
 ## File Changes Summary
 
@@ -159,7 +197,7 @@ Example with 7% tile area on 1920×1080 (tile ≈ 134px):
 | `src-tauri/src/commands.rs` | Add `read_color_cache`, `write_color_cache`, `get_file_stats` commands |
 | `src-tauri/src/lib.rs` | Register new commands |
 | `src/configui/color-worker.ts` | New file — Web Worker for color precomputation |
-| `src/configui/screensaver-settings.ts` | Precompute flow on save, progress UI |
+| `src/configui/screensaver-settings.ts` | Bake button, cache status indicator, progress UI |
 | `src/patterns/image-buffer.ts` | Accept and use color cache |
 | `src/patterns/mosaic-pattern.ts` | Pass cache to ImageBuffer, adaptive tile stop |
 | `src/types.ts` | ColorCache type definition |
