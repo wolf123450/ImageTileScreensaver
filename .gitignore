@@ -53,6 +53,8 @@ coverage/
 # Playwright artifacts
 playwright-report/
 test-results/
+test-results.json
+test-err.txt
 
 # Cache directories
 .npm/
