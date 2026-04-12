@@ -11,6 +11,7 @@ module.exports = (env, argv) => {
       'tauri-bridge': './src/tauri-bridge.ts',
       renderer: './src/renderer.ts',
       settings: './src/configui/screensaver-settings.ts',
+      'color-worker': './src/configui/color-worker.ts',
     },
     devtool: isProduction ? false : 'source-map',
     target: 'web',
