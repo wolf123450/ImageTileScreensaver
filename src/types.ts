@@ -51,6 +51,24 @@ export interface PreviewImagesResult {
     totalCount: number;
 }
 
+export interface ColorCacheEntry {
+    avgColor: string;   // hex e.g. "#4a6b3c"
+    domColor: string;   // hex e.g. "#2d4f1e"
+    mtime: number;      // file modification time in ms since epoch
+    size: number;       // file size in bytes
+}
+
+export interface ColorCacheData {
+    version: number;
+    entries: Record<string, ColorCacheEntry>;
+}
+
+export interface FileStatEntry {
+    path: string;
+    mtime: number;
+    size: number;
+}
+
 /** The IPC API surface exposed to renderer/settings code via window.electronAPI */
 export interface ScreensaverAPI {
     closeScreensaver: () => Promise<void>;
@@ -63,6 +81,10 @@ export interface ScreensaverAPI {
     saveConfig: (config: ScreensaverConfig) => Promise<void>;
     closeConfigWindow: () => void;
     getLogPath: () => Promise<string>;
+    readColorCache: () => Promise<ColorCacheData>;
+    writeColorCache: (data: ColorCacheData) => Promise<void>;
+    getFileStats: (paths: string[]) => Promise<FileStatEntry[]>;
+    getRawImagePaths: () => Promise<string[]>;
 }
 
 declare global {
