@@ -1,6 +1,6 @@
 # Image Tile Screensaver - TODO List
 
-> Last reviewed: 2026-03-10
+> Last reviewed: 2026-04-11
 
 This document tracks planned features, improvements, and technical debt. Items marked ✅ are complete, ⬜ are pending. Priority tiers indicate suggested implementation order.
 
@@ -8,12 +8,12 @@ This document tracks planned features, improvements, and technical debt. Items m
 
 ## Milestone 1: Core MVP Polish
 
-These items are needed to make the current Electron build production-ready.
+These items are needed to make the Tauri build production-ready.
 
 ### 1.1 Configuration & Persistence
 - [x] Configuration dialog via `/c` argument (UI, window management, IPC, persistence, directory browser)
 - [x] JSON config file read/write (`config.ts` with `loadConfig`/`saveConfig`)
-- [ ] **CF-1:** Recursive/subdirectory image scanning (config flag exists but `getImageFiles` only reads top-level)
+- [x] **CF-1:** Recursive/subdirectory image scanning (implemented in Rust via `walkdir` crate)
 - [ ] **CF-2:** Proper error handling for missing/invalid image directories (user-facing toast notifications instead of `alert()`)
 - [ ] **CF-3:** Validate and migrate saved config on schema changes (version field + merge strategy)
 
@@ -72,17 +72,17 @@ These items are needed to make the current Electron build production-ready.
 ## Milestone 3: Technical Debt & Code Quality
 
 ### 3.1 Architecture Fixes
-- [ ] **TD-1:** Remove dead code in `display.ts` (unused `createWindow`, hardcoded `getAllDisplays` placeholder)
-- [ ] **TD-2:** Unify config types — `ScreensaverConfig` (config.ts) vs `Config` (pattern-config.ts) vs `ConfigValues` (screensaver-settings.ts) should be one shared type
-- [ ] **TD-3:** Fix webpack targets — main entry should use `electron-main`, preload should use `electron-preload` (currently all use `electron-renderer`)
-- [ ] **TD-4:** Replace deprecated `url.format()` with `new URL()` / `pathToFileURL()`
-- [ ] **TD-5:** Replace `promisify(fs.readdir/stat)` with `fs.promises` (already used elsewhere in same file)
-- [ ] **TD-6:** Extract shared image-replacement logic from GridPattern and MosaicPattern into a base class or utility
-- [ ] **TD-6b:** Clean up PatternFactory — remove unused `patterns` registry in `index.ts` (factory ignores it and creates instances via if/else); use the registry or replace with a simple map-based lookup
+- [x] **TD-1:** ~~Remove dead code in `display.ts`~~ — removed with Electron code during Tauri migration
+- [ ] **TD-2:** Unify config types — `ScreensaverConfig` (types.ts) vs `ConfigValues` (screensaver-settings.ts) should be one shared type
+- [x] **TD-3:** ~~Fix webpack targets~~ — now targets `web` for Tauri
+- [x] **TD-4:** ~~Replace deprecated `url.format()`~~ — removed with Electron code
+- [x] **TD-5:** ~~Replace `promisify(fs.readdir/stat)`~~ — removed with Electron code (Rust handles file I/O)
+- [x] **TD-6:** Extract shared image-replacement logic — implemented in `image-utils.ts`
+- [x] **TD-6b:** Clean up PatternFactory — now uses clean map-based registry lookup
 
 ### 3.2 Security
 - [x] **SEC-1:** Remove `nodeIntegration: true` from screensaver BrowserWindow (use preload + contextIsolation like config window)
-- [ ] **SEC-2:** Eliminate `any` types in IPC API (`getConfig`, `applyConfig`, `saveConfig` in preload.ts) — use shared `ScreensaverConfig` type
+- [x] **SEC-2:** ~~Eliminate `any` types in IPC API~~ — Tauri bridge (`tauri-bridge.ts`) uses typed `ScreensaverAPI` interface
 
 ### 3.3 Typing & Linting
 - [ ] **TD-7:** Add/restore `.eslintrc` config (lint script exists but config file is missing)
@@ -96,8 +96,8 @@ These items are needed to make the current Electron build production-ready.
 - [ ] **TEST-4:** E2E test for config dialog save → screensaver reads new config
 
 ### 3.5 Dependencies
-- [ ] **DEP-1:** Update Electron from v26 to current LTS (v33+)
-- [ ] **DEP-2:** Remove duplicate `dotenv` from both `dependencies` and `devDependencies`
+- [x] **DEP-1:** ~~Update Electron~~ — N/A, migrated to Tauri
+- [x] **DEP-2:** ~~Remove duplicate `dotenv`~~ — removed during Tauri migration (no longer needed)
 - [x] Logging system implemented (Winston with file rotation)
 
 ---
@@ -118,8 +118,8 @@ Binary size reduction confirmed: **158 MB (Electron exe) → 10 MB (Tauri exe)**
 
 ### Remaining
 - [ ] **TAURI-8:** Test `.scr` rename + Windows screensaver integration
-- [ ] **TAURI-10:** Image file paths need conversion to Tauri asset protocol URLs for display in webview
-- [ ] **TAURI-11:** Remove Electron-specific code once migration is validated (main.ts, preload.ts, display.ts, electron-builder.json)
+- [x] **TAURI-10:** Image file paths converted to Tauri asset protocol URLs via `convertFileSrc()` in `tauri-bridge.ts`
+- [x] **TAURI-11:** Electron-specific code removed (main.ts, preload.ts, display.ts, electron-builder.json all deleted)
 
 ---
 

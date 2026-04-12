@@ -1,26 +1,27 @@
 # Image Tile Screensaver
 
-A customizable screensaver application built with Electron and TypeScript that displays images across multiple monitors. It functions both as a standard Windows screensaver and as a cross-platform application.
+A customizable Windows screensaver built with Tauri v2 and TypeScript that displays images across multiple monitors. Binary size: ~10 MB (exe), ~2.4 MB (installer).
 
 ## Features
 
 - Display images from local directories across multiple monitors
-- Support for various display patterns and layouts
+- Support for various display patterns: Simple, Grid, Mosaic, Random, Sliding
 - Smooth transitions between images with configurable intervals
-- Proper Windows screensaver integration with command-line argument support
+- Windows screensaver integration with command-line argument support (`/s`, `/c`, `/p`)
 - Configuration UI with tabs for general settings, image selection, patterns, and advanced options
 - Low CPU and memory footprint for efficient background operation
 - Support for various image formats (JPG, PNG, WebP, GIF, BMP)
 - Multiple monitor support with independent or synchronized displays
-- Cross-platform support (primary focus on Windows for screensaver functionality)
+- Recursive image directory scanning
+- Light/dark theme configuration
 
 ## Development
 
 ### Prerequisites
 
-- Node.js (v14 or newer)
-- npm or yarn
-- Electron knowledge for screensaver development
+- Node.js (v18+)
+- Rust toolchain (for Tauri backend)
+- npm
 
 ### Setup
 
@@ -37,62 +38,77 @@ A customizable screensaver application built with Electron and TypeScript that d
    npm install
    ```
 
-3. Start the development server
+3. Start the Tauri development server
 
    ```bash
-   npm start
+   npm run tauri:dev
+   ```
+
+4. Open config dialog in development
+
+   ```bash
+   npm run tauri:dev:config
    ```
 
 ### Project Structure
 
-- `src/` - Core application code including main and renderer processes
-- `src/patterns/` - Image layout pattern generators
-- `src/config.ts` - Configuration management
-- `src/display.ts` - Display and monitor management
-- `src/main.ts` - Electron main process
-- `src/preload.ts` - Preload script for secure renderer/main process communication
-- `src/renderer.ts` - Renderer process for the UI
-- `src/configui/` - Configuration UI components and logic
+- `src/` - Frontend TypeScript code
+  - `src/renderer.ts` - Main screensaver display rendering
+  - `src/tauri-bridge.ts` - IPC adapter (Tauri invoke → `window.electronAPI` shim)
+  - `src/types.ts` - Shared TypeScript type definitions
+  - `src/patterns/` - Image layout pattern implementations
+  - `src/configui/` - Configuration UI (settings dialog)
+- `src-tauri/` - Tauri backend (Rust)
+  - `src-tauri/src/lib.rs` - App builder, multi-window screensaver setup
+  - `src-tauri/src/config.rs` - Config struct, JSON persistence
+  - `src-tauri/src/images.rs` - Image directory scanning
+  - `src-tauri/src/commands.rs` - IPC command handlers
 
 ### Building
 
-To build the application:
+Development build (webpack):
 
 ```bash
 npm run build
 ```
 
-For Windows screensaver deployment:
+Production Tauri build:
 
 ```bash
-npm run build:screensaver
+npm run tauri:build
 ```
 
-This will generate an `.scr` file in the `dist` directory that can be installed as a Windows screensaver.
+### Testing
+
+```bash
+npm test              # Run unit tests (vitest)
+npm run test:watch    # Watch mode
+```
 
 ## Configuration
 
 The screensaver can be configured through:
 
-- Command line arguments for specifying image directories
-- Configuration dialog (accessible through screensaver settings in Windows)
-- Configuration file for advanced settings
+- Configuration dialog (via `/c` argument or Windows Screen Saver Settings)
+- JSON config file at `~/.config/ImageTileScreensaver/config.json`
 
 ### Settings Options
 
-- Image source directories
+- Image source directories (with recursive subdirectory support)
 - Change interval for images
-- Display pattern selection
+- Display pattern selection (Simple, Grid, Mosaic, Random, Sliding)
+- Image fit style (cover, contain, fill)
 - Transition effects and timing
-- Per-monitor display settings
+- Multi-monitor sync mode
+- Light/dark theme
 
 ## Windows Screensaver Integration
 
 This application supports standard Windows screensaver command line arguments:
 
-- `/s` - Run as screensaver
+- `/s` - Run as screensaver (fullscreen on all monitors)
 - `/c` - Show configuration dialog
-- `/p <HWND>` - Preview mode (to be implemented)
+- `/p <HWND>` - Preview mode (render into Windows preview thumbnail)
 
 ## License
 
