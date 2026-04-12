@@ -650,6 +650,17 @@ function loadPatternOptions(pattern: string): void {
                                     <option value="dominant" ${colorMatch === 'dominant' ? 'selected' : ''}>Dominant Color</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <div class="cache-status" id="mosaic-cache-status"></div>
+                                <button class="bake-btn" id="mosaic-bake-btn">Bake Color Cache</button>
+                                <div class="bake-progress" id="mosaic-bake-progress">
+                                    <div class="bake-progress-bar">
+                                        <div class="bake-progress-fill" id="mosaic-bake-fill"></div>
+                                    </div>
+                                    <span class="bake-progress-label" id="mosaic-bake-label">0 / 0 (0%)</span>
+                                    <button class="bake-cancel-btn" id="mosaic-bake-cancel">Cancel</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -710,6 +721,22 @@ function loadPatternOptions(pattern: string): void {
             const photoOptions = document.getElementById('mosaic-photomosaic-options');
             photoEnabled?.addEventListener('change', () => {
                 photoOptions?.classList.toggle('visible', photoEnabled.checked);
+            });
+
+            // Bake button
+            const bakeBtn = document.getElementById('mosaic-bake-btn');
+            bakeBtn?.addEventListener('click', () => startBake());
+
+            // Check cache status on load if photomosaic is enabled
+            if (photomosaicEnabled) {
+                checkCacheStatus();
+            }
+
+            // Also check when photomosaic is toggled on
+            photoEnabled?.addEventListener('change', () => {
+                if (photoEnabled.checked) {
+                    checkCacheStatus();
+                }
             });
 
             // Conditional: reference source radios
@@ -961,4 +988,161 @@ function showToast(message: string, kind: 'success' | 'error'): void {
     window.setTimeout(() => {
         toast.remove();
     }, 2800);
+}
+
+// --- Color cache bake UI ---
+
+let activeWorker: Worker | null = null;
+
+async function checkCacheStatus(): Promise<void> {
+    const statusEl = document.getElementById('mosaic-cache-status');
+    if (!statusEl) return;
+
+    const api = (window as any).electronAPI;
+    if (!api?.readColorCache || !api?.getRawImagePaths || !api?.getFileStats) {
+        statusEl.className = 'cache-status visible status-error';
+        statusEl.textContent = 'Color cache API not available.';
+        return;
+    }
+
+    try {
+        const [cacheData, rawPaths] = await Promise.all([
+            api.readColorCache(),
+            api.getRawImagePaths(),
+        ]);
+
+        if (rawPaths.length === 0) {
+            statusEl.className = 'cache-status visible status-warning';
+            statusEl.textContent = 'No images found. Configure an image folder first.';
+            return;
+        }
+
+        const stats: { path: string; mtime: number; size: number }[] = await api.getFileStats(rawPaths);
+        const statsMap = new Map(stats.map(s => [s.path, s]));
+
+        const entries = cacheData.entries ?? {};
+        let missing = 0;
+
+        for (const rawPath of rawPaths) {
+            const entry = entries[rawPath];
+            const stat = statsMap.get(rawPath);
+            if (!entry || !stat || entry.mtime !== stat.mtime || entry.size !== stat.size) {
+                missing++;
+            }
+        }
+
+        if (missing === 0) {
+            statusEl.className = 'cache-status visible status-ok';
+            statusEl.textContent = `Color cache up to date (${rawPaths.length} images)`;
+        } else if (Object.keys(entries).length === 0) {
+            statusEl.className = 'cache-status visible status-error';
+            statusEl.textContent = 'No color cache found. Click Bake to precompute colors for photomosaic mode.';
+        } else {
+            statusEl.className = 'cache-status visible status-warning';
+            statusEl.textContent = `Color cache incomplete: ${missing} of ${rawPaths.length} images need recomputation. Click Bake to update.`;
+        }
+    } catch (e) {
+        statusEl.className = 'cache-status visible status-error';
+        statusEl.textContent = `Error checking cache: ${e}`;
+    }
+}
+
+async function startBake(): Promise<void> {
+    const api = (window as any).electronAPI;
+    if (!api) return;
+
+    const bakeBtn = document.getElementById('mosaic-bake-btn') as HTMLButtonElement | null;
+    const progressDiv = document.getElementById('mosaic-bake-progress');
+    const fillBar = document.getElementById('mosaic-bake-fill');
+    const label = document.getElementById('mosaic-bake-label');
+    const cancelBtn = document.getElementById('mosaic-bake-cancel');
+
+    if (!bakeBtn || !progressDiv || !fillBar || !label) return;
+
+    // Read existing cache and raw paths
+    const cacheData = await api.readColorCache();
+    const entries = cacheData.entries ?? {};
+    const rawPaths: string[] = await api.getRawImagePaths();
+    const assetUrls: string[] = await api.getImages();
+
+    // Build raw path → asset URL mapping
+    const pathToUrl = new Map<string, string>();
+    for (let i = 0; i < rawPaths.length; i++) {
+        pathToUrl.set(rawPaths[i], assetUrls[i]);
+    }
+
+    // Get file stats for invalidation (uses raw filesystem paths)
+    const stats: { path: string; mtime: number; size: number }[] = await api.getFileStats(rawPaths);
+    const statsMap = new Map(stats.map((s: { path: string; mtime: number; size: number }) => [s.path, s]));
+
+    // Filter to images needing computation
+    const toCompute: Array<{ rawPath: string; assetUrl: string }> = [];
+    for (const rawPath of rawPaths) {
+        const entry = entries[rawPath];
+        const stat = statsMap.get(rawPath);
+        const assetUrl = pathToUrl.get(rawPath);
+        if (!assetUrl) continue;
+        if (!entry || !stat || entry.mtime !== stat.mtime || entry.size !== stat.size) {
+            toCompute.push({ rawPath, assetUrl });
+        }
+    }
+
+    if (toCompute.length === 0) {
+        await checkCacheStatus();
+        return;
+    }
+
+    // Show progress, hide bake button
+    bakeBtn.style.display = 'none';
+    progressDiv.classList.add('visible');
+    label.textContent = `0 / ${toCompute.length} (0%)`;
+    fillBar.style.width = '0%';
+
+    // Spawn worker
+    const worker = new Worker('color-worker.bundle.js');
+    activeWorker = worker;
+
+    worker.onmessage = async (e: MessageEvent) => {
+        const msg = e.data;
+
+        if (msg.type === 'progress') {
+            const pct = Math.round((msg.completed / msg.total) * 100);
+            label.textContent = `${msg.completed} / ${msg.total} (${pct}%)`;
+            fillBar.style.width = `${pct}%`;
+        }
+
+        if (msg.type === 'result') {
+            const stat = statsMap.get(msg.rawPath);
+            entries[msg.rawPath] = {
+                avgColor: msg.avgColor,
+                domColor: msg.domColor,
+                mtime: stat?.mtime ?? 0,
+                size: stat?.size ?? 0,
+            };
+        }
+
+        if (msg.type === 'done') {
+            // Write cache (even on cancel — preserve partial progress)
+            try {
+                await api.writeColorCache({ version: 1, entries });
+            } catch (writeErr) {
+                console.error('Failed to write color cache:', writeErr);
+            }
+
+            // Reset UI
+            worker.terminate();
+            activeWorker = null;
+            progressDiv.classList.remove('visible');
+            bakeBtn.style.display = '';
+            await checkCacheStatus();
+        }
+    };
+
+    // Wire cancel button
+    cancelBtn?.addEventListener('click', () => {
+        worker.postMessage({ type: 'cancel' });
+    }, { once: true });
+
+    // Start the worker
+    worker.postMessage({ type: 'start', items: toCompute });
 }
