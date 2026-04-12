@@ -541,3 +541,93 @@ input[type="number"] {
     gap: 4px;
     cursor: pointer;
 }
+
+/* Color cache status banner */
+.cache-status {
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-size: 13px;
+    display: none;
+}
+
+.cache-status.visible {
+    display: block;
+}
+
+.cache-status.status-ok {
+    background: #e6f4ea;
+    border: 1px solid #34a853;
+    color: #1e7e34;
+}
+
+.cache-status.status-warning {
+    background: #fff8e1;
+    border: 1px solid #f9a825;
+    color: #8d6e00;
+}
+
+.cache-status.status-error {
+    background: #fce8e6;
+    border: 1px solid #ea4335;
+    color: #c62828;
+}
+
+/* Bake progress bar */
+.bake-progress {
+    display: none;
+    margin: 8px 0;
+}
+
+.bake-progress.visible {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bake-progress-bar {
+    flex: 1;
+    height: 20px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bake-progress-fill {
+    height: 100%;
+    background: #4285f4;
+    transition: width 0.2s ease;
+    width: 0%;
+}
+
+.bake-progress-label {
+    font-size: 12px;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.bake-cancel-btn {
+    padding: 4px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.bake-cancel-btn:hover {
+    background: #f5f5f5;
+}
+
+.bake-btn {
+    padding: 6px 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    margin: 8px 0;
+}
+
+.bake-btn:hover {
+    background: #f5f5f5;
+}
