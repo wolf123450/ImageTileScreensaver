@@ -86,11 +86,11 @@ These items are needed to make the Tauri build production-ready.
 
 ### 3.3 Typing & Linting
 - [ ] **TD-7:** Add/restore `.eslintrc` config (lint script exists but config file is missing)
-- [ ] **TD-8:** Replace all `any` types with proper interfaces throughout codebase
+- [x] **TD-8:** Replace `any` usage in runtime TypeScript code with proper interfaces
 - [ ] **TD-9:** Move inline styles in patterns/renderer to CSS classes
 
 ### 3.4 Testing
-- [ ] **TEST-1:** Unit tests for config load/save/merge
+- [x] **TEST-1:** Unit tests for config load/save/merge
 - [x] **TEST-2:** Unit tests for pattern layout algorithms (including expanded mosaic + random/sliding coverage)
 - [x] **TEST-3:** Integration test for screensaver command-line argument parsing
 - [x] **TEST-4:** E2E test added for config dialog save → renderer consumes saved config (Playwright spec in `e2e/`)
