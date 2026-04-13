@@ -556,8 +556,8 @@ function loadPatternOptions(pattern: string): void {
                     <div class="form-group">
                         <label for="mosaic-placement-speed">Placement Speed:</label>
                         <div class="range-with-value">
-                            <input type="range" id="mosaic-placement-speed" min="50" max="1000" step="50" value="${placementSpeed}">
-                            <span class="range-value" id="mosaic-placement-speed-value">${placementSpeed}ms</span>
+                            <input type="range" id="mosaic-placement-speed" min="0" max="1000" step="50" value="${placementSpeed}">
+                            <span class="range-value" id="mosaic-placement-speed-value">${placementSpeed === 0 ? 'Max' : placementSpeed + 'ms'}</span>
                         </div>
                     </div>
                     <div class="form-group">
@@ -679,7 +679,11 @@ function loadPatternOptions(pattern: string): void {
                 const label = document.getElementById(labelId);
                 if (input && label) {
                     input.addEventListener('input', () => {
-                        label.textContent = input.value + suffix;
+                        if (id === 'mosaic-placement-speed' && input.value === '0') {
+                            label.textContent = 'Max';
+                        } else {
+                            label.textContent = input.value + suffix;
+                        }
                     });
                 }
             }

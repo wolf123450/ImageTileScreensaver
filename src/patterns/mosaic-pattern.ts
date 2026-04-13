@@ -130,10 +130,12 @@ export class MosaicPattern implements Pattern {
     // Create tile container
     this.tileContainer = document.createElement('div');
     this.tileContainer.style.position = 'absolute';
-    this.tileContainer.style.left = '50%';
-    this.tileContainer.style.top = '50%';
+    this.tileContainer.style.left = '0';
+    this.tileContainer.style.top = '0';
     this.tileContainer.style.transformOrigin = '0 0';
-    this.tileContainer.style.transform = 'translate(-50%, -50%) scale(1)';
+    // Center world origin (0,0) in the viewport
+    this.tileContainer.style.transform =
+      `translate(${this.viewportWidth / 2}px, ${this.viewportHeight / 2}px) scale(1)`;
     this.tileContainer.style.transition = 'transform 0.5s ease-out';
     this.container.style.overflow = 'hidden';
     this.container.style.position = 'relative';
@@ -326,8 +328,15 @@ export class MosaicPattern implements Pattern {
     targetScale = Math.max(targetScale, this.config.maxZoomOut);
 
     this.currentScale = targetScale;
+
+    // Center the bounding box midpoint in the viewport
+    const cx = (bounds.minX + bounds.maxX) / 2;
+    const cy = (bounds.minY + bounds.maxY) / 2;
+    const tx = this.viewportWidth / 2 - cx * targetScale;
+    const ty = this.viewportHeight / 2 - cy * targetScale;
+
     this.tileContainer.style.transform =
-      `translate(-50%, -50%) scale(${targetScale})`;
+      `translate(${tx}px, ${ty}px) scale(${targetScale})`;
   }
 
   private stopFilling(): void {
