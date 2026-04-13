@@ -840,7 +840,7 @@ function getPatternOptionsFromUI(): PatternOptions {
             const result: PatternOptions = {
                 tileAreaPercent: Number(tileArea?.value) || 7,
                 tileMargin: Number(tileMargin?.value) || 4,
-                placementSpeed: Number(placementSpeed?.value) || 200,
+                placementSpeed: placementSpeed?.value != null && placementSpeed.value !== '' ? Number(placementSpeed.value) : 200,
                 maxTiles: maxTiles?.value != null && maxTiles.value !== '' ? Number(maxTiles.value) : 200,
                 startPosition: (startPos?.value as 'center' | 'random') || 'center',
                 priorityFunction: (priorityFn?.value as PatternOptions['priorityFunction']) || 'center-out',
