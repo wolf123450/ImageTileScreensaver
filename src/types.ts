@@ -43,7 +43,8 @@ export interface PatternOptions {
     bufferSize?: number;
     referenceImage?: string;
     referenceImageDir?: string;
-    colorMatchStrategy?: 'average' | 'dominant';
+    colorMatchStrategy?: 'average' | 'dominant' | 'hsv';
+    referenceTileCount?: number;
 }
 
 export interface PreviewImagesResult {
@@ -56,6 +57,8 @@ export interface ColorCacheEntry {
     domColor: string;   // hex e.g. "#2d4f1e"
     mtime: number;      // file modification time in ms since epoch
     size: number;       // file size in bytes
+    width?: number;     // natural pixel width
+    height?: number;    // natural pixel height
 }
 
 export interface ColorCacheData {

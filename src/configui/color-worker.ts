@@ -8,7 +8,7 @@
  *
  * Messages OUT:
  *   { type: 'progress', completed: number, total: number }
- *   { type: 'result', rawPath: string, avgColor: string, domColor: string }
+ *   { type: 'result', rawPath: string, avgColor: string, domColor: string, width: number, height: number }
  *   { type: 'done', wasCancelled: boolean }
  *   { type: 'error', rawPath: string, message: string }
  */
@@ -42,6 +42,8 @@ self.onmessage = async (e: MessageEvent) => {
 
         const avgColor = computeAverageColor(bitmap);
         const domColor = computeDominantColor(bitmap);
+        const width = bitmap.width;
+        const height = bitmap.height;
         bitmap.close();
 
         self.postMessage({
@@ -49,6 +51,8 @@ self.onmessage = async (e: MessageEvent) => {
           rawPath,
           avgColor: rgbToHex(avgColor),
           domColor: rgbToHex(domColor),
+          width,
+          height,
         });
       } catch (err) {
         self.postMessage({

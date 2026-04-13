@@ -535,6 +535,7 @@ function loadPatternOptions(pattern: string): void {
             const photomosaicEnabled = !!(opts.referenceImage || opts.referenceImageDir);
             const refSource = opts.referenceImage ? 'single' : opts.referenceImageDir ? 'directory' : 'random';
             const colorMatch = opts.colorMatchStrategy ?? 'average';
+            const refTileCount = opts.referenceTileCount ?? 250;
 
             patternOptionsContainer.innerHTML = `
                 <div class="mosaic-option-group">
@@ -648,7 +649,15 @@ function loadPatternOptions(pattern: string): void {
                                 <select id="mosaic-color-match">
                                     <option value="average" ${colorMatch === 'average' ? 'selected' : ''}>Average Color</option>
                                     <option value="dominant" ${colorMatch === 'dominant' ? 'selected' : ''}>Dominant Color</option>
+                                    <option value="hsv" ${colorMatch === 'hsv' ? 'selected' : ''}>HSV Distance</option>
                                 </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="mosaic-ref-tile-count">Reference Size (tiles):</label>
+                                <div class="range-with-value">
+                                    <input type="range" id="mosaic-ref-tile-count" min="50" max="1000" step="25" value="${refTileCount}">
+                                    <span class="range-value" id="mosaic-ref-tile-count-value">${refTileCount}</span>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <div class="cache-status" id="mosaic-cache-status"></div>
@@ -672,6 +681,7 @@ function loadPatternOptions(pattern: string): void {
                 { id: 'mosaic-tile-margin', labelId: 'mosaic-tile-margin-value', suffix: 'px' },
                 { id: 'mosaic-placement-speed', labelId: 'mosaic-placement-speed-value', suffix: 'ms' },
                 { id: 'mosaic-direction-angle', labelId: 'mosaic-direction-angle-value', suffix: '°' },
+                { id: 'mosaic-ref-tile-count', labelId: 'mosaic-ref-tile-count-value', suffix: '' },
 
             ];
             for (const { id, labelId, suffix } of rangeInputs) {
@@ -836,6 +846,7 @@ function getPatternOptionsFromUI(): PatternOptions {
             const refImage = document.getElementById('mosaic-reference-image') as HTMLInputElement | null;
             const refDir = document.getElementById('mosaic-reference-dir') as HTMLInputElement | null;
             const colorMatch = document.getElementById('mosaic-color-match') as HTMLSelectElement | null;
+            const refTileCount = document.getElementById('mosaic-ref-tile-count') as HTMLInputElement | null;
 
             const result: PatternOptions = {
                 tileAreaPercent: Number(tileArea?.value) || 7,
@@ -848,7 +859,8 @@ function getPatternOptionsFromUI(): PatternOptions {
                 holdDuration: (Number(holdDuration?.value) || 5) * 1000,
                 zoomEnabled: zoomEnabled?.checked ?? true,
                 maxZoomOut: 1 / Math.pow(2, Number(maxZoomOut?.value) || 0),
-                colorMatchStrategy: (colorMatch?.value as 'average' | 'dominant') || 'average',
+                colorMatchStrategy: (colorMatch?.value as 'average' | 'dominant' | 'hsv') || 'average',
+                referenceTileCount: Number(refTileCount?.value) || 250,
             };
 
             if (photoEnabled?.checked) {
@@ -1122,6 +1134,8 @@ async function startBake(): Promise<void> {
                 domColor: msg.domColor,
                 mtime: stat?.mtime ?? 0,
                 size: stat?.size ?? 0,
+                width: msg.width,
+                height: msg.height,
             };
         }
 
