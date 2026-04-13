@@ -45,6 +45,7 @@ pub struct PatternOptions {
     pub reference_image: Option<String>,
     pub reference_image_dir: Option<String>,
     pub color_match_strategy: Option<String>,
+    pub reference_tile_count: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,6 +211,7 @@ mod tests {
                 reference_image: None,
                 reference_image_dir: None,
                 color_match_strategy: None,
+                reference_tile_count: None,
             },
             multi_monitor_sync: true,
             transition: TransitionConfig {

@@ -1,6 +1,7 @@
 import './types';
 import { Pattern } from './patterns';
 import { PatternFactory } from './patterns/pattern-factory';
+import { MosaicPattern } from './patterns/mosaic-pattern';
 import type { ScreensaverConfig } from './types';
 
 // Image array to store all loaded images
@@ -87,8 +88,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('DEBUG MODE: exit-on-input disabled. Press Escape or Q to exit.');
   }
 
+  // Debug info panel
+  let debugPanel: HTMLDivElement | null = null;
+  let debugUpdateTimer: number | null = null;
+
+  function createDebugPanel(): HTMLDivElement {
+    const panel = document.createElement('div');
+    panel.id = 'debug-panel';
+    panel.style.cssText = `
+      position: fixed; top: 8px; left: 8px; z-index: 99999;
+      background: rgba(0,0,0,0.75); color: #0f0; font: 12px monospace;
+      padding: 8px 12px; border-radius: 4px; pointer-events: none;
+      white-space: pre; line-height: 1.5;
+    `;
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function updateDebugPanel() {
+    if (!debugPanel) return;
+    if (currentPattern instanceof MosaicPattern) {
+      const s = currentPattern.stats;
+      const avg = currentPattern.avgTickTime;
+      const cfg = (currentPattern as any).config;
+      const zoomPct = (s.currentScale * 100).toFixed(1);
+      const lines = [
+        `[${s.state.toUpperCase()}]  Tiles: ${s.tilesPlaced}  Cycle: ${s.cycleCount}`,
+        `Tick: ${s.lastTickTime.toFixed(1)}ms  Avg: ${avg.toFixed(1)}ms  Stalls: ${s.stallCount}`,
+        `Zoom: ${zoomPct}%  (max-out: ${((cfg?.maxZoomOut ?? 0) * 100).toFixed(0)}%)`,
+        `Tile screen: ${s.tileScreenPx.toFixed(0)}px  (min: ${s.minTileScreenPx}px)`,
+        `World: ${s.worldW.toFixed(0)} x ${s.worldH.toFixed(0)}`,
+        `Buffer: ${s.bufferCurrent}/${s.bufferMax}  Avail: ${s.bufferAvailable}/${s.bufferTotal}`,
+        `Strategy: ${cfg?.colorMatchStrategy ?? '?'}  Speed: ${cfg?.placementSpeed ?? '?'}ms`,
+      ];
+      if (s.refWidth > 0) {
+        const coverage = s.worldW > 0 && s.refWorldW > 0
+          ? ((s.worldW * s.worldH) / (s.refWorldW * s.refWorldH) * 100).toFixed(0)
+          : '?';
+        lines.push(`Ref img: ${s.refWidth}x${s.refHeight}px  World: ${s.refWorldW.toFixed(0)}x${s.refWorldH.toFixed(0)}`);
+        lines.push(`Tiles cover: ${coverage}% of ref  ...${s.referenceImage.slice(-35)}`);
+      }
+      debugPanel.textContent = lines.join('\n');
+    } else {
+      debugPanel.textContent = `Pattern: ${currentPattern?.name ?? 'none'}`;
+    }
+  }
+
+  function toggleDebugPanel() {
+    if (debugPanel) {
+      debugPanel.remove();
+      debugPanel = null;
+      if (debugUpdateTimer !== null) {
+        window.clearInterval(debugUpdateTimer);
+        debugUpdateTimer = null;
+      }
+    } else {
+      debugPanel = createDebugPanel();
+      updateDebugPanel();
+      debugUpdateTimer = window.setInterval(updateDebugPanel, 250);
+    }
+  }
+
   document.addEventListener('keydown', (event) => {
-    if (debugMode && event.key !== 'Escape' && event.key !== 'q') return;
+    const key = event.key.toLowerCase();
+    if (debugMode && key === 'd') {
+      toggleDebugPanel();
+      return;
+    }
+    if (debugMode && key === 'r') {
+      if (currentPattern instanceof MosaicPattern) {
+        currentPattern.toggleReferenceOverlay();
+      }
+      return;
+    }
+    if (debugMode && key !== 'escape' && key !== 'q') return;
     console.log('Key pressed:', event.key);
     window.electronAPI.closeScreensaver();
   }, true); // Use capturing to ensure event gets processed early

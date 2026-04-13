@@ -1,5 +1,7 @@
-import { averageColor, dominantColor, colorDistance, sampleReferenceAt } from './color-utils';
+import { averageColor, dominantColor, colorDistance, hsvDistance, sampleReferenceAt, computeTileDimensions } from './color-utils';
 import type { RGB } from './color-utils';
+
+export type ColorMatchStrategy = 'average' | 'dominant' | 'hsv';
 
 export interface BufferedImage {
   url: string;
@@ -11,7 +13,7 @@ export interface BufferedImage {
 export interface ImageBufferConfig {
   tileAreaPercent?: number;
   bufferSize?: number;
-  colorMatchStrategy?: 'average' | 'dominant';
+  colorMatchStrategy?: ColorMatchStrategy;
 }
 
 export class ImageBuffer {
@@ -19,12 +21,24 @@ export class ImageBuffer {
   private availableUrls: string[] = [];
   private buffer: BufferedImage[] = [];
   private _bufferSize: number = 5;
-  private colorStrategy: 'average' | 'dominant' = 'average';
+  private colorStrategy: ColorMatchStrategy = 'average';
   private colorCache: Map<string, { avgColor: RGB; domColor: RGB }> | null = null;
   targetArea: number = 0;
 
   get bufferedCount(): number {
     return this.buffer.length;
+  }
+
+  get availableCount(): number {
+    return this.availableUrls.length;
+  }
+
+  get totalCount(): number {
+    return this.allUrls.length;
+  }
+
+  get bufferSize(): number {
+    return this._bufferSize;
   }
 
   init(
@@ -69,15 +83,22 @@ export class ImageBuffer {
   ): BufferedImage | null {
     if (this.buffer.length === 0) return null;
 
+    // Compute tile dimensions for region sampling
+    const sampleImg = this.buffer[0];
+    const dims = computeTileDimensions(sampleImg.naturalWidth, sampleImg.naturalHeight, this.targetArea);
+
     const targetColor = sampleReferenceAt(
       referenceCtx, referenceWidth, referenceHeight,
       worldX, worldY, worldBounds,
+      dims.width, dims.height,
     );
+
+    const distFn = this.colorStrategy === 'hsv' ? hsvDistance : colorDistance;
 
     let bestIndex = 0;
     let bestDist = Infinity;
     for (let i = 0; i < this.buffer.length; i++) {
-      const dist = colorDistance(this.buffer[i].avgColor, targetColor);
+      const dist = distFn(this.buffer[i].avgColor, targetColor);
       if (dist < bestDist) {
         bestDist = dist;
         bestIndex = i;

@@ -1,9 +1,11 @@
 import { Pattern } from './index';
 import { PlacementEngine, createPriorityFn } from './placement-engine';
 import { ImageBuffer } from './image-buffer';
+import { PhotomosaicPlanner } from './photomosaic-planner';
 import { computeTileDimensions } from './color-utils';
 import type { ScreensaverConfig, ColorCacheData } from '../types';
 import type { PlacedTile } from './placement-engine';
+import type { PlannedTile, PlannerCacheEntry } from './photomosaic-planner';
 import type { RGB } from './color-utils';
 
 /** Minimum tile dimension in screen-space pixels. Tiles smaller than this are imperceptible. */
@@ -24,7 +26,8 @@ interface MosaicConfig {
   imageFitStyle: string;
   referenceImage: string;
   referenceImageDir: string;
-  colorMatchStrategy: 'average' | 'dominant';
+  colorMatchStrategy: 'average' | 'dominant' | 'hsv';
+  referenceTileCount: number;
 }
 
 export class MosaicPattern implements Pattern {
@@ -41,11 +44,12 @@ export class MosaicPattern implements Pattern {
     holdDuration: 5000,
     zoomEnabled: true,
     maxZoomOut: 0.3,
-    bufferSize: 5,
+    bufferSize: 30,
     imageFitStyle: 'cover',
     referenceImage: '',
     referenceImageDir: '',
     colorMatchStrategy: 'average',
+    referenceTileCount: 250,
   };
 
   private engine: PlacementEngine | null = null;
@@ -55,15 +59,48 @@ export class MosaicPattern implements Pattern {
   private referenceCtx: CanvasRenderingContext2D | null = null;
   private referenceWidth: number = 0;
   private referenceHeight: number = 0;
+  /** Fixed world-space bounds for the reference image, computed once at cycle start. */
+  private referenceWorldBounds: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
   private tilesPlaced: number = 0;
   private currentScale: number = 1;
   private placementTimer: number | null = null;
   private holdTimer: number | null = null;
   private fadeTimer: number | null = null;
   private imageUrls: string[] = [];
-  private colorCache: Map<string, { avgColor: RGB; domColor: RGB; }> | null = null;
+  private colorCache: Map<string, PlannerCacheEntry> | null = null;
   private viewportWidth: number = 0;
   private viewportHeight: number = 0;
+  private referenceOverlay: HTMLImageElement | null = null;
+  private plannedTiles: PlannedTile[] = [];
+
+  /** Profiling stats exposed for the debug overlay. */
+  stats = {
+    tilesPlaced: 0,
+    totalTickTime: 0,
+    lastTickTime: 0,
+    tickCount: 0,
+    referenceImage: '',
+    cycleCount: 0,
+    currentScale: 1,
+    tileScreenPx: 0,
+    minTileScreenPx: MIN_TILE_SCREEN_PX,
+    worldW: 0,
+    worldH: 0,
+    refWidth: 0,
+    refHeight: 0,
+    refWorldW: 0,
+    refWorldH: 0,
+    bufferCurrent: 0,
+    bufferMax: 0,
+    bufferAvailable: 0,
+    bufferTotal: 0,
+    stallCount: 0,
+    state: 'init' as 'init' | 'placing' | 'stalled' | 'stopped' | 'hold' | 'fading',
+  };
+
+  get avgTickTime(): number {
+    return this.stats.tickCount > 0 ? this.stats.totalTickTime / this.stats.tickCount : 0;
+  }
 
   init(config: ScreensaverConfig): void {
     const opts = config.patternOptions ?? {};
@@ -84,6 +121,7 @@ export class MosaicPattern implements Pattern {
       referenceImage: opts.referenceImage ?? this.config.referenceImage,
       referenceImageDir: opts.referenceImageDir ?? this.config.referenceImageDir,
       colorMatchStrategy: opts.colorMatchStrategy ?? this.config.colorMatchStrategy,
+      referenceTileCount: opts.referenceTileCount ?? this.config.referenceTileCount,
     };
   }
 
@@ -119,9 +157,11 @@ export class MosaicPattern implements Pattern {
     this.engine = null;
     this.imageBuffer = null;
     this.referenceCtx = null;
+    this.referenceWorldBounds = null;
     this.tilesPlaced = 0;
     this.currentScale = 1;
     this.colorCache = null;
+    this.plannedTiles = [];
   }
 
   private async startCycle(): Promise<void> {
@@ -166,10 +206,12 @@ export class MosaicPattern implements Pattern {
             this.colorCache = new Map();
             for (let i = 0; i < rawPaths.length && i < this.imageUrls.length; i++) {
               const entry = cacheData.entries[rawPaths[i]];
-              if (entry) {
+              if (entry && entry.width && entry.height) {
                 this.colorCache.set(this.imageUrls[i], {
                   avgColor: this.hexToRgb(entry.avgColor),
                   domColor: this.hexToRgb(entry.domColor),
+                  width: entry.width,
+                  height: entry.height,
                 });
               }
             }
@@ -180,46 +222,96 @@ export class MosaicPattern implements Pattern {
       }
     }
 
-    this.imageBuffer.init(this.imageUrls, this.viewportWidth, this.viewportHeight, {
-      tileAreaPercent: this.config.tileAreaPercent,
-      bufferSize: this.config.bufferSize,
-      colorMatchStrategy: this.config.colorMatchStrategy,
-    }, this.colorCache ?? undefined);
-
     // Load reference image if photomosaic mode
     if (this.config.referenceImage || this.config.referenceImageDir) {
       await this.loadReferenceImage();
     }
 
-    // Pre-fill buffer
-    await this.imageBuffer.prefill();
+    this.stats.cycleCount++;
 
-    // Seed first tile
-    const firstImg = this.imageBuffer.next();
-    if (!firstImg) return;
-
-    const dims = computeTileDimensions(
-      firstImg.naturalWidth,
-      firstImg.naturalHeight,
-      this.imageBuffer.targetArea,
-    );
+    const targetArea = this.viewportWidth * this.viewportHeight * (this.config.tileAreaPercent / 100);
     const margin = this.config.tileMargin;
-    const firstTile = this.engine.seedFirstTile(
-      dims.width + margin,
-      dims.height + margin,
-      this.config.startPosition,
-      this.viewportWidth,
-      this.viewportHeight,
-    );
-    this.renderTile(firstTile, firstImg.url, dims.width, dims.height, margin);
-    this.tilesPlaced = 1;
 
-    // Start placement loop
-    this.placementTimer = window.setInterval(() => this.tick(), this.config.placementSpeed);
+    // Determine if we can use the full-cache planner
+    const useFullPlanner = this.referenceCtx && this.colorCache && this.colorCache.size > 0
+      && this.referenceWorldBounds;
+
+    if (useFullPlanner) {
+      // --- Photomosaic planner path ---
+      // Seed first tile using square approximation
+      const seedSide = Math.sqrt(targetArea);
+      this.engine.seedFirstTile(
+        seedSide + margin, seedSide + margin,
+        this.config.startPosition,
+        this.viewportWidth, this.viewportHeight,
+      );
+
+      const planner = new PhotomosaicPlanner({
+        cache: this.colorCache!,
+        referenceCtx: this.referenceCtx!,
+        referenceWidth: this.referenceWidth,
+        referenceHeight: this.referenceHeight,
+        referenceWorldBounds: this.referenceWorldBounds!,
+        targetArea,
+        tileMargin: margin,
+        colorMatchStrategy: this.config.colorMatchStrategy,
+        maxTiles: this.config.maxTiles > 0 ? this.config.maxTiles : 10000,
+      });
+
+      this.plannedTiles = planner.plan(this.engine);
+
+      // Render the first planned tile
+      if (this.plannedTiles.length > 0) {
+        const first = this.plannedTiles.shift()!;
+        this.renderTile(first.tile, first.url, first.displayWidth, first.displayHeight, first.margin);
+        this.tilesPlaced = 1;
+      }
+
+      // Start render loop
+      this.placementTimer = window.setInterval(() => this.tickPlanned(), this.config.placementSpeed);
+    } else {
+      // --- Buffer path (regular mosaic or fallback photomosaic) ---
+      this.imageBuffer = new ImageBuffer();
+      this.imageBuffer.init(this.imageUrls, this.viewportWidth, this.viewportHeight, {
+        tileAreaPercent: this.config.tileAreaPercent,
+        bufferSize: this.config.bufferSize,
+        colorMatchStrategy: this.config.colorMatchStrategy,
+      }, this.colorCache as Map<string, { avgColor: RGB; domColor: RGB }> ?? undefined);
+
+      await this.imageBuffer.prefill();
+
+      const firstImg = this.imageBuffer.next();
+      if (!firstImg) return;
+
+      const dims = computeTileDimensions(
+        firstImg.naturalWidth,
+        firstImg.naturalHeight,
+        this.imageBuffer.targetArea,
+      );
+      const firstTile = this.engine.seedFirstTile(
+        dims.width + margin, dims.height + margin,
+        this.config.startPosition,
+        this.viewportWidth, this.viewportHeight,
+      );
+      this.renderTile(firstTile, firstImg.url, dims.width, dims.height, margin);
+      this.tilesPlaced = 1;
+
+      // Start placement loop
+      this.placementTimer = window.setInterval(() => this.tick(), this.config.placementSpeed);
+    }
   }
 
   private tick(): void {
     if (!this.engine || !this.imageBuffer || !this.tileContainer) return;
+
+    const t0 = performance.now();
+
+    // Update buffer stats every tick
+    this.stats.bufferCurrent = this.imageBuffer.bufferedCount;
+    this.stats.bufferMax = this.imageBuffer.bufferSize;
+    this.stats.bufferAvailable = this.imageBuffer.availableCount;
+    this.stats.bufferTotal = this.imageBuffer.totalCount;
+    this.stats.currentScale = this.currentScale;
 
     // Get next image
     let img;
@@ -231,7 +323,7 @@ export class MosaicPattern implements Pattern {
       }
       img = this.imageBuffer.nextForPosition(
         corner.x, corner.y,
-        this.engine.getWorldBounds(),
+        this.referenceWorldBounds!,
         this.referenceCtx,
         this.referenceWidth,
         this.referenceHeight,
@@ -243,9 +335,14 @@ export class MosaicPattern implements Pattern {
     if (!img) {
       if (!this.imageBuffer.hasMore()) {
         this.stopFilling();
+      } else {
+        this.stats.stallCount++;
+        this.stats.state = 'stalled';
       }
       return;
     }
+
+    this.stats.state = 'placing';
 
     const dims = computeTileDimensions(
       img.naturalWidth,
@@ -257,6 +354,7 @@ export class MosaicPattern implements Pattern {
     // Screen-space check: skip placement if tile would be too small to perceive
     // World → Screen: screenPx = worldPx * currentScale
     const tileScreenWidth = dims.width * this.currentScale;
+    this.stats.tileScreenPx = tileScreenWidth;
     if (tileScreenWidth < MIN_TILE_SCREEN_PX) {
       this.stopFilling();
       return;
@@ -272,6 +370,12 @@ export class MosaicPattern implements Pattern {
     this.renderTile(tile, img.url, dims.width, dims.height, margin);
     this.tilesPlaced++;
 
+    const elapsed = performance.now() - t0;
+    this.stats.lastTickTime = elapsed;
+    this.stats.totalTickTime += elapsed;
+    this.stats.tickCount++;
+    this.stats.tilesPlaced = this.tilesPlaced;
+
     if (this.config.zoomEnabled) {
       this.updateZoom();
     }
@@ -279,6 +383,46 @@ export class MosaicPattern implements Pattern {
     if (this.config.maxTiles > 0 && this.tilesPlaced >= this.config.maxTiles) {
       this.stopFilling();
       return;
+    }
+
+    if (this.config.zoomEnabled && this.currentScale <= this.config.maxZoomOut) {
+      this.stopFilling();
+      return;
+    }
+  }
+
+  private tickPlanned(): void {
+    if (!this.tileContainer) return;
+
+    const t0 = performance.now();
+    this.stats.currentScale = this.currentScale;
+
+    if (this.plannedTiles.length === 0) {
+      this.stopFilling();
+      return;
+    }
+
+    const planned = this.plannedTiles.shift()!;
+
+    // Screen-space check
+    const tileScreenWidth = planned.displayWidth * this.currentScale;
+    this.stats.tileScreenPx = tileScreenWidth;
+    if (tileScreenWidth < MIN_TILE_SCREEN_PX) {
+      this.stopFilling();
+      return;
+    }
+
+    this.renderTile(planned.tile, planned.url, planned.displayWidth, planned.displayHeight, planned.margin);
+    this.tilesPlaced++;
+
+    const elapsed = performance.now() - t0;
+    this.stats.lastTickTime = elapsed;
+    this.stats.totalTickTime += elapsed;
+    this.stats.tickCount++;
+    this.stats.tilesPlaced = this.tilesPlaced;
+
+    if (this.config.zoomEnabled) {
+      this.updateZoom();
     }
 
     if (this.config.zoomEnabled && this.currentScale <= this.config.maxZoomOut) {
@@ -329,6 +473,11 @@ export class MosaicPattern implements Pattern {
 
     this.currentScale = targetScale;
 
+    // Update stats with world bounds
+    this.stats.worldW = worldW;
+    this.stats.worldH = worldH;
+    this.stats.currentScale = targetScale;
+
     // Center the bounding box midpoint in the viewport
     const cx = (bounds.minX + bounds.maxX) / 2;
     const cy = (bounds.minY + bounds.maxY) / 2;
@@ -345,6 +494,8 @@ export class MosaicPattern implements Pattern {
       this.placementTimer = null;
     }
 
+    this.stats.state = 'hold';
+
     this.holdTimer = window.setTimeout(() => {
       this.holdTimer = null;
       this.fadeOutAndRebuild();
@@ -353,6 +504,8 @@ export class MosaicPattern implements Pattern {
 
   private fadeOutAndRebuild(): void {
     if (!this.tileContainer) return;
+
+    this.stats.state = 'fading';
 
     const images = this.tileContainer.querySelectorAll('img');
     images.forEach(img => {
@@ -368,6 +521,7 @@ export class MosaicPattern implements Pattern {
       this.tileContainer = null;
       this.engine = null;
       this.imageBuffer = null;
+      this.plannedTiles = [];
       this.tilesPlaced = 0;
       this.currentScale = 1;
 
@@ -386,6 +540,8 @@ export class MosaicPattern implements Pattern {
 
     if (!refUrl) return;
 
+    this.stats.referenceImage = refUrl;
+
     return new Promise<void>((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -398,6 +554,25 @@ export class MosaicPattern implements Pattern {
         this.referenceCtx = ctx;
         this.referenceWidth = canvas.width;
         this.referenceHeight = canvas.height;
+
+        // Compute fixed world-space bounds for the reference image.
+        // Size so that ~referenceTileCount tiles (at the configured tileAreaPercent)
+        // are needed to fully cover the reference area.
+        const tileArea = this.viewportWidth * this.viewportHeight * (this.config.tileAreaPercent / 100);
+        const totalRefArea = tileArea * this.config.referenceTileCount;
+        const refAspect = canvas.width / canvas.height;
+        // refW * refH = totalRefArea, refW / refH = refAspect
+        const rwW = Math.sqrt(totalRefArea * refAspect);
+        const rwH = Math.sqrt(totalRefArea / refAspect);
+        this.referenceWorldBounds = {
+          minX: -rwW / 2, minY: -rwH / 2,
+          maxX: rwW / 2, maxY: rwH / 2,
+        };
+
+        this.stats.refWidth = canvas.width;
+        this.stats.refHeight = canvas.height;
+        this.stats.refWorldW = rwW;
+        this.stats.refWorldH = rwH;
         resolve();
       };
       img.onerror = () => {
@@ -405,6 +580,33 @@ export class MosaicPattern implements Pattern {
       };
       img.src = refUrl;
     });
+  }
+
+  /** Toggle a translucent reference image overlay behind all tiles. */
+  toggleReferenceOverlay(): void {
+    if (this.referenceOverlay) {
+      this.referenceOverlay.remove();
+      this.referenceOverlay = null;
+      return;
+    }
+
+    if (!this.tileContainer || !this.referenceWorldBounds || !this.stats.referenceImage) return;
+
+    const b = this.referenceWorldBounds;
+    const overlay = document.createElement('img');
+    overlay.src = this.stats.referenceImage;
+    overlay.style.position = 'absolute';
+    overlay.style.left = `${b.minX}px`;
+    overlay.style.top = `${b.minY}px`;
+    overlay.style.width = `${b.maxX - b.minX}px`;
+    overlay.style.height = `${b.maxY - b.minY}px`;
+    overlay.style.objectFit = 'fill';
+    overlay.style.opacity = '0.4';
+    overlay.style.zIndex = '-1';
+    overlay.style.pointerEvents = 'none';
+
+    this.tileContainer.insertBefore(overlay, this.tileContainer.firstChild);
+    this.referenceOverlay = overlay;
   }
 
   private hexToRgb(hex: string): RGB {
