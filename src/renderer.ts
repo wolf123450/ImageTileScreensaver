@@ -118,9 +118,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         `Zoom: ${zoomPct}%  (max-out: ${((cfg?.maxZoomOut ?? 0) * 100).toFixed(0)}%)`,
         `Tile screen: ${s.tileScreenPx.toFixed(0)}px  (min: ${s.minTileScreenPx}px)`,
         `World: ${s.worldW.toFixed(0)} x ${s.worldH.toFixed(0)}`,
-        `Buffer: ${s.bufferCurrent}/${s.bufferMax}  Avail: ${s.bufferAvailable}/${s.bufferTotal}`,
-        `Strategy: ${cfg?.colorMatchStrategy ?? '?'}  Speed: ${cfg?.placementSpeed ?? '?'}ms`,
       ];
+      if (s.plannerMode) {
+        lines.push(`Planner: ${s.plannedRemaining} tiles remaining`);
+      } else {
+        lines.push(`Buffer: ${s.bufferCurrent}/${s.bufferMax}  Avail: ${s.bufferAvailable}/${s.bufferTotal}`);
+      }
+      lines.push(`Strategy: ${cfg?.colorMatchStrategy ?? '?'}  Speed: ${cfg?.placementSpeed ?? '?'}ms`);
       if (s.refWidth > 0) {
         const coverage = s.worldW > 0 && s.refWorldW > 0
           ? ((s.worldW * s.worldH) / (s.refWorldW * s.refWorldH) * 100).toFixed(0)

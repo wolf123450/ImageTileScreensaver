@@ -95,6 +95,8 @@ export class MosaicPattern implements Pattern {
     bufferAvailable: 0,
     bufferTotal: 0,
     stallCount: 0,
+    plannerMode: false,
+    plannedRemaining: 0,
     state: 'init' as 'init' | 'placing' | 'stalled' | 'stopped' | 'hold' | 'fading',
   };
 
@@ -259,6 +261,8 @@ export class MosaicPattern implements Pattern {
       });
 
       this.plannedTiles = planner.plan(this.engine);
+      this.stats.plannerMode = true;
+      this.stats.plannedRemaining = this.plannedTiles.length;
 
       // Render the first planned tile
       if (this.plannedTiles.length > 0) {
@@ -414,6 +418,7 @@ export class MosaicPattern implements Pattern {
 
     this.renderTile(planned.tile, planned.url, planned.displayWidth, planned.displayHeight, planned.margin);
     this.tilesPlaced++;
+    this.stats.plannedRemaining = this.plannedTiles.length;
 
     const elapsed = performance.now() - t0;
     this.stats.lastTickTime = elapsed;
