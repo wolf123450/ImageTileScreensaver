@@ -56,6 +56,12 @@ export class PlacementEngine {
     return this.freeCorners.length > 0 ? this.freeCorners[0] : null;
   }
 
+  skipCorner(): void {
+    if (this.freeCorners.length > 0) {
+      this.freeCorners.splice(0, 1);
+    }
+  }
+
   getTiles(): readonly PlacedTile[] {
     return this.placedTiles;
   }

@@ -172,4 +172,22 @@ describe('PlacementEngine', () => {
       expect(fn({ x: 5, y: 0 })).toBeCloseTo(0, 0);
     });
   });
+
+  describe('skipCorner', () => {
+    it('removes the top-priority corner without placing a tile', () => {
+      const engine = new PlacementEngine(createPriorityFn('center-out'));
+      engine.seedFirstTile(100, 100, 'center', 800, 600);
+      const cornersBefore = engine.cornerCount;
+      const tilesBefore = engine.tileCount;
+      engine.skipCorner();
+      expect(engine.cornerCount).toBe(cornersBefore - 1);
+      expect(engine.tileCount).toBe(tilesBefore);
+    });
+
+    it('is a no-op when corner queue is empty', () => {
+      const engine = new PlacementEngine(createPriorityFn('center-out'));
+      engine.skipCorner();
+      expect(engine.cornerCount).toBe(0);
+    });
+  });
 });
