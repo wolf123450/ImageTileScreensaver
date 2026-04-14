@@ -661,7 +661,10 @@ function loadPatternOptions(pattern: string): void {
                             </div>
                             <div class="form-group">
                                 <div class="cache-status" id="mosaic-cache-status"></div>
-                                <button class="bake-btn" id="mosaic-bake-btn">Bake Color Cache</button>
+                                <div class="cache-buttons">
+                                    <button class="bake-btn" id="mosaic-bake-btn">Bake Color Cache</button>
+                                    <button class="bake-btn clear-cache-btn" id="mosaic-clear-cache-btn">Clear Cache</button>
+                                </div>
                                 <div class="bake-progress" id="mosaic-bake-progress">
                                     <div class="bake-progress-bar">
                                         <div class="bake-progress-fill" id="mosaic-bake-fill"></div>
@@ -740,6 +743,9 @@ function loadPatternOptions(pattern: string): void {
             // Bake button
             const bakeBtn = document.getElementById('mosaic-bake-btn');
             bakeBtn?.addEventListener('click', () => startBake());
+
+            const clearCacheBtn = document.getElementById('mosaic-clear-cache-btn');
+            clearCacheBtn?.addEventListener('click', () => clearCache());
 
             // Check cache status on load if photomosaic is enabled
             if (photomosaicEnabled) {
@@ -1009,6 +1015,18 @@ function showToast(message: string, kind: 'success' | 'error'): void {
 // --- Color cache bake UI ---
 
 let activeWorker: Worker | null = null;
+
+async function clearCache(): Promise<void> {
+    const api = (window as any).electronAPI;
+    if (!api?.writeColorCache) return;
+
+    try {
+        await api.writeColorCache({ version: 1, entries: {} });
+    } catch (e) {
+        console.error('Failed to clear color cache:', e);
+    }
+    await checkCacheStatus();
+}
 
 async function checkCacheStatus(): Promise<void> {
     const statusEl = document.getElementById('mosaic-cache-status');
