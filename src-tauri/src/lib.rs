@@ -72,15 +72,18 @@ pub fn run() {
             match run_mode {
                 ("config", _) => {
                     log::info!("Launching in configuration mode");
-                    WebviewWindowBuilder::new(
+                    let mut builder = WebviewWindowBuilder::new(
                         app,
                         "config",
                         WebviewUrl::App("configui/screensaver-settings.html".into()),
                     )
                     .title("Image Tile Screensaver Configuration")
                     .inner_size(850.0, 700.0)
-                    .resizable(true)
-                    .build()?;
+                    .resizable(true);
+                    if cfg!(debug_assertions) {
+                        builder = builder.devtools(true);
+                    }
+                    builder.build()?;
                 }
                 ("preview", _hwnd) => {
                     log::info!("Preview mode requested — not yet implemented, exiting");
