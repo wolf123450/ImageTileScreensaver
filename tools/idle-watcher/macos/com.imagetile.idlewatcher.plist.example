@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent that runs idle_watcher.py at login.
+
+  Setup:
+    1. Copy this file to ~/Library/LaunchAgents/com.imagetile.idlewatcher.plist
+    2. Edit the placeholder paths below (python3, idle_watcher.py, and the
+       screensaver binary inside the .app bundle).
+    3. Grant "Input Monitoring" permission (System Settings > Privacy &
+       Security > Input Monitoring) to /usr/bin/python3 (or your venv's
+       python), otherwise pynput's keyboard listener silently receives no
+       events.
+    4. Load it:  launchctl load ~/Library/LaunchAgents/com.imagetile.idlewatcher.plist
+       Unload:   launchctl unload ~/Library/LaunchAgents/com.imagetile.idlewatcher.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.imagetile.idlewatcher</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/REPLACE/WITH/PATH/TO/idle_watcher.py</string>
+        <string>--executable</string>
+        <string>/Applications/ImageTileScreensaver.app/Contents/MacOS/image-tile-screensaver</string>
+        <string>--idle-seconds</string>
+        <string>300</string>
+        <string>--dismiss-key</string>
+        <string>Escape</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/idle-watcher.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/idle-watcher.err</string>
+</dict>
+</plist>

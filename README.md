@@ -110,6 +110,22 @@ This application supports standard Windows screensaver command line arguments:
 - `/c` - Show configuration dialog
 - `/p <HWND>` - Preview mode (render into Windows preview thumbnail)
 
+### Self-triggered mode (no OS screensaver hook)
+
+For machines where the OS's own idle timer can't be trusted to launch a
+screensaver — e.g. a mouse jiggler is keeping the machine "active" to
+prevent a lock screen, but a screensaver is still wanted to protect an
+OLED display — `/s` accepts extra flags that change how it's dismissed:
+
+- `ignoreMouse` - mouse movement and clicks no longer dismiss the screensaver
+- `--dismiss-key[=<Key>]` - restrict dismissal to a single key (defaults to
+  `Escape` if no value given). Without this flag, any key dismisses as usual.
+
+These are meant to be combined with the standalone idle-watcher in
+[`tools/idle-watcher/`](tools/idle-watcher/), which monitors real keyboard
+activity (ignoring mouse input entirely) and launches the screensaver with
+these flags after a configurable idle period, across Windows/macOS/Linux.
+
 ## License
 
 MIT

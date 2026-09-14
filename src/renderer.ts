@@ -88,6 +88,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('DEBUG MODE: exit-on-input disabled. Press Escape or Q to exit.');
   }
 
+  // ignoreMouse + dismissKey: for launch by an external idle-detection daemon
+  // (see tools/idle-watcher/) where mouse input must not dismiss the screensaver.
+  const ignoreMouse = params.ignoreMouse === '1';
+  const dismissKey = params.dismissKey ? params.dismissKey.toLowerCase() : null;
+  if (ignoreMouse) {
+    console.log(`ignoreMouse mode: mouse input disabled, dismiss key = ${dismissKey ?? 'any'}`);
+  }
+
   // Debug info panel
   let debugPanel: HTMLDivElement | null = null;
   let debugUpdateTimer: number | null = null;
@@ -166,12 +174,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     if (debugMode && key !== 'escape' && key !== 'q') return;
+    if (dismissKey && key !== dismissKey) return;
     console.log('Key pressed:', event.key);
     window.electronAPI.closeScreensaver();
   }, true); // Use capturing to ensure event gets processed early
 
   document.addEventListener('mousedown', (event) => {
-    if (debugMode) return;
+    if (debugMode || ignoreMouse) return;
     console.log('Mouse down at:', event.clientX, event.clientY);
     window.electronAPI.closeScreensaver();
   }, true);
@@ -179,10 +188,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Track initial mouse position for movement detection
   let initialX = 0;
   let initialY = 0;
-  
+
   // Set initial position when mouse starts moving
   document.addEventListener('mousemove', (e) => {
-    if (debugMode) return;
+    if (debugMode || ignoreMouse) return;
     if (initialX === 0 && initialY === 0) {
       initialX = e.clientX;
       initialY = e.clientY;
@@ -203,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Also add click handler as a fallback
   document.addEventListener('click', () => {
-    if (debugMode) return;
+    if (debugMode || ignoreMouse) return;
     console.log('Click detected');
     window.electronAPI.closeScreensaver();
   }, true);
