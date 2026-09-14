@@ -39,7 +39,8 @@ describe('PhotomosaicPlanner', () => {
       referenceWorldBounds: refBounds,
       targetArea: 10000,
       tileMargin: 4,
-      colorMatchStrategy: 'average',
+      colorDistanceFn: 'rgb',
+      colorSource: 'average',
       maxTiles: 50,
     });
 
@@ -69,7 +70,8 @@ describe('PhotomosaicPlanner', () => {
       referenceWorldBounds: refBounds,
       targetArea: 10000,
       tileMargin: 4,
-      colorMatchStrategy: 'average',
+      colorDistanceFn: 'rgb',
+      colorSource: 'average',
       maxTiles: 20,
     });
 
@@ -83,11 +85,14 @@ describe('PhotomosaicPlanner', () => {
 
   it('skips corners outside reference bounds', () => {
     const engine = new PlacementEngine(createPriorityFn('center-out'));
-    // Tiny reference bounds — most corners will be outside
+    // Reference bounds large enough to fit some tiles but not all
+    // targetArea=10000 → sampleSide=100 → halfTile=50
+    // Inner bounds will be [-150,-150] to [150,150] (300x300)
+    // Seed tile 104x104 centered: fits, but growth is bounded
     const cache = makeCache([
       { url: 'a.jpg', color: [100, 100, 100], w: 100, h: 100 },
     ]);
-    const refBounds = { minX: -60, minY: -60, maxX: 60, maxY: 60 };
+    const refBounds = { minX: -200, minY: -200, maxX: 200, maxY: 200 };
     const ctx = fakeCtx([100, 100, 100]);
 
     const planner = new PhotomosaicPlanner({
@@ -98,15 +103,16 @@ describe('PhotomosaicPlanner', () => {
       referenceWorldBounds: refBounds,
       targetArea: 10000,
       tileMargin: 4,
-      colorMatchStrategy: 'average',
+      colorDistanceFn: 'rgb',
+      colorSource: 'average',
       maxTiles: 100,
     });
 
-    engine.seedFirstTile(104, 104, 'center', 200, 200);
+    engine.seedFirstTile(104, 104, 'center', 400, 400);
     const plan = planner.plan(engine);
 
-    // Tiles fitting inside the small refBounds — limited by boundary
-    expect(plan.length).toBeLessThan(100); // well under maxTiles
+    // Tiles fitting inside the bounded area — limited by boundary, well under maxTiles
+    expect(plan.length).toBeLessThan(100);
     expect(plan.length).toBeGreaterThan(0);
     expect(engine.cornerCount).toBe(0); // all corners consumed
   });
@@ -127,7 +133,8 @@ describe('PhotomosaicPlanner', () => {
       referenceWorldBounds: refBounds,
       targetArea: 10000,
       tileMargin: 4,
-      colorMatchStrategy: 'average',
+      colorDistanceFn: 'rgb',
+      colorSource: 'average',
       maxTiles: 5,
     });
 
@@ -155,7 +162,8 @@ describe('PhotomosaicPlanner', () => {
       referenceWorldBounds: refBounds,
       targetArea: 10000,
       tileMargin: 4,
-      colorMatchStrategy: 'dominant',
+      colorDistanceFn: 'rgb',
+      colorSource: 'dominant',
       maxTiles: 1,
     });
 
@@ -180,7 +188,8 @@ describe('PhotomosaicPlanner', () => {
       referenceWorldBounds: refBounds,
       targetArea: 10000,
       tileMargin: 4,
-      colorMatchStrategy: 'average',
+      colorDistanceFn: 'rgb',
+      colorSource: 'average',
       maxTiles: 10,
     });
 

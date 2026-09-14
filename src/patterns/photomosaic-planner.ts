@@ -25,7 +25,8 @@ export interface PhotomosaicPlannerConfig {
   referenceWorldBounds: { minX: number; minY: number; maxX: number; maxY: number };
   targetArea: number;
   tileMargin: number;
-  colorMatchStrategy: 'average' | 'dominant' | 'hsv';
+  colorDistanceFn: 'rgb' | 'hsv';
+  colorSource: 'average' | 'dominant';
   maxTiles: number;
 }
 
@@ -45,12 +46,12 @@ export class PhotomosaicPlanner {
   plan(engine: PlacementEngine): PlannedTile[] {
     const {
       cache, referenceCtx, referenceWidth, referenceHeight,
-      referenceWorldBounds, targetArea, tileMargin, colorMatchStrategy, maxTiles,
+      referenceWorldBounds, targetArea, tileMargin, colorDistanceFn, colorSource, maxTiles,
     } = this.config;
 
-    const distFn = colorMatchStrategy === 'hsv' ? hsvDistance : colorDistance;
-    const reusePenalty = colorMatchStrategy === 'hsv' ? REUSE_PENALTY_HSV : REUSE_PENALTY_RGB;
-    const useColorKey = colorMatchStrategy === 'dominant' ? 'domColor' : 'avgColor';
+    const distFn = colorDistanceFn === 'hsv' ? hsvDistance : colorDistance;
+    const reusePenalty = colorDistanceFn === 'hsv' ? REUSE_PENALTY_HSV : REUSE_PENALTY_RGB;
+    const useColorKey = colorSource === 'average' ? 'avgColor' : 'domColor';
 
     // Pre-build array of entries for fast iteration
     const cacheEntries: Array<{ url: string; color: RGB; width: number; height: number }> = [];
@@ -66,16 +67,29 @@ export class PhotomosaicPlanner {
     // Square sample side for reference color sampling
     const sampleSide = Math.sqrt(targetArea);
 
+    // Shrink bounds by half a tile so placed tiles don't extend far beyond the reference edge.
+    // Corners are attachment points — the tile rectangle extends outward from there.
+    const halfTile = sampleSide / 2;
+    const innerBounds = {
+      minX: referenceWorldBounds.minX + halfTile,
+      minY: referenceWorldBounds.minY + halfTile,
+      maxX: referenceWorldBounds.maxX - halfTile,
+      maxY: referenceWorldBounds.maxY - halfTile,
+    };
+
+    let skippedCorners = 0;
+
     while (result.length < maxTiles) {
       const corner = engine.peekCorner();
       if (!corner) break;
 
-      // Check if corner is inside reference bounds
+      // Check if corner is inside shrunk bounds
       if (
-        corner.x < referenceWorldBounds.minX || corner.x > referenceWorldBounds.maxX ||
-        corner.y < referenceWorldBounds.minY || corner.y > referenceWorldBounds.maxY
+        corner.x < innerBounds.minX || corner.x > innerBounds.maxX ||
+        corner.y < innerBounds.minY || corner.y > innerBounds.maxY
       ) {
         engine.skipCorner();
+        skippedCorners++;
         continue;
       }
 
@@ -121,6 +135,7 @@ export class PhotomosaicPlanner {
       });
     }
 
+    console.log(`[Planner] Done: ${result.length} tiles planned, ${skippedCorners} corners skipped (out of bounds), cache: ${cacheEntries.length} images, refBounds: [${referenceWorldBounds.minX.toFixed(0)},${referenceWorldBounds.minY.toFixed(0)}]-[${referenceWorldBounds.maxX.toFixed(0)},${referenceWorldBounds.maxY.toFixed(0)}]`);
     return result;
   }
 }

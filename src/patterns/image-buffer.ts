@@ -1,7 +1,8 @@
 import { averageColor, dominantColor, colorDistance, hsvDistance, sampleReferenceAt, computeTileDimensions } from './color-utils';
 import type { RGB } from './color-utils';
 
-export type ColorMatchStrategy = 'average' | 'dominant' | 'hsv';
+export type ColorDistanceFn = 'rgb' | 'hsv';
+export type ColorSource = 'average' | 'dominant';
 
 export interface BufferedImage {
   url: string;
@@ -13,7 +14,8 @@ export interface BufferedImage {
 export interface ImageBufferConfig {
   tileAreaPercent?: number;
   bufferSize?: number;
-  colorMatchStrategy?: ColorMatchStrategy;
+  colorDistanceFn?: ColorDistanceFn;
+  colorSource?: ColorSource;
 }
 
 export class ImageBuffer {
@@ -21,7 +23,8 @@ export class ImageBuffer {
   private availableUrls: string[] = [];
   private buffer: BufferedImage[] = [];
   private _bufferSize: number = 5;
-  private colorStrategy: ColorMatchStrategy = 'average';
+  private distanceFn: ColorDistanceFn = 'rgb';
+  private colorSource: ColorSource = 'dominant';
   private colorCache: Map<string, { avgColor: RGB; domColor: RGB }> | null = null;
   targetArea: number = 0;
 
@@ -51,7 +54,8 @@ export class ImageBuffer {
     this.allUrls = [...imageUrls];
     this.availableUrls = this.shuffle([...imageUrls]);
     this._bufferSize = config.bufferSize ?? 5;
-    this.colorStrategy = config.colorMatchStrategy ?? 'average';
+    this.distanceFn = config.colorDistanceFn ?? 'rgb';
+    this.colorSource = config.colorSource ?? 'dominant';
     this.targetArea = viewportWidth * viewportHeight * ((config.tileAreaPercent ?? 7) / 100);
     this.buffer = [];
     this.colorCache = colorCache ?? null;
@@ -93,7 +97,7 @@ export class ImageBuffer {
       dims.width, dims.height,
     );
 
-    const distFn = this.colorStrategy === 'hsv' ? hsvDistance : colorDistance;
+    const distFn = this.distanceFn === 'hsv' ? hsvDistance : colorDistance;
 
     let bestIndex = 0;
     let bestDist = Infinity;
@@ -138,12 +142,12 @@ export class ImageBuffer {
       img.onload = () => {
         let color: RGB;
         if (cached) {
-          color = this.colorStrategy === 'dominant' ? cached.domColor : cached.avgColor;
+          color = this.colorSource === 'average' ? cached.avgColor : cached.domColor;
         } else {
           try {
-            color = this.colorStrategy === 'dominant'
-              ? dominantColor(img)
-              : averageColor(img);
+            color = this.colorSource === 'average'
+              ? averageColor(img)
+              : dominantColor(img);
           } catch {
             color = [0, 0, 0];
           }

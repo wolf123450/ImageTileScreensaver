@@ -103,7 +103,7 @@ describe('ImageBuffer', () => {
       buffer.init(
         ['a.jpg', 'b.jpg'],
         800, 600,
-        { tileAreaPercent: 10, bufferSize: 2 },
+        { tileAreaPercent: 10, bufferSize: 2, colorSource: 'average' },
         cache,
       );
 

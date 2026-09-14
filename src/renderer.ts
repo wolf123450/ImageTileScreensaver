@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         lines.push(`Buffer: ${s.bufferCurrent}/${s.bufferMax}  Avail: ${s.bufferAvailable}/${s.bufferTotal}`);
       }
-      lines.push(`Strategy: ${cfg?.colorMatchStrategy ?? '?'}  Speed: ${cfg?.placementSpeed ?? '?'}ms`);
+      lines.push(`Dist: ${cfg?.colorDistanceFn ?? '?'}  Src: ${cfg?.colorSource ?? '?'}  Speed: ${cfg?.placementSpeed ?? '?'}ms`);
       if (s.refWidth > 0) {
         const coverage = s.worldW > 0 && s.refWorldW > 0
           ? ((s.worldW * s.worldH) / (s.refWorldW * s.refWorldH) * 100).toFixed(0)

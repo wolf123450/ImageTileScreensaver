@@ -26,7 +26,8 @@ interface MosaicConfig {
   imageFitStyle: string;
   referenceImage: string;
   referenceImageDir: string;
-  colorMatchStrategy: 'average' | 'dominant' | 'hsv';
+  colorDistanceFn: 'rgb' | 'hsv';
+  colorSource: 'average' | 'dominant';
   referenceTileCount: number;
 }
 
@@ -48,7 +49,8 @@ export class MosaicPattern implements Pattern {
     imageFitStyle: 'cover',
     referenceImage: '',
     referenceImageDir: '',
-    colorMatchStrategy: 'average',
+    colorDistanceFn: 'rgb',
+    colorSource: 'dominant',
     referenceTileCount: 250,
   };
 
@@ -122,7 +124,8 @@ export class MosaicPattern implements Pattern {
       bufferSize: opts.bufferSize ?? this.config.bufferSize,
       referenceImage: opts.referenceImage ?? this.config.referenceImage,
       referenceImageDir: opts.referenceImageDir ?? this.config.referenceImageDir,
-      colorMatchStrategy: opts.colorMatchStrategy ?? this.config.colorMatchStrategy,
+      colorDistanceFn: opts.colorDistanceFn ?? this.config.colorDistanceFn,
+      colorSource: opts.colorSource ?? this.config.colorSource,
       referenceTileCount: opts.referenceTileCount ?? this.config.referenceTileCount,
     };
   }
@@ -238,6 +241,8 @@ export class MosaicPattern implements Pattern {
     const useFullPlanner = this.referenceCtx && this.colorCache && this.colorCache.size > 0
       && this.referenceWorldBounds;
 
+    console.log(`[Mosaic] startCycle: path=${useFullPlanner ? 'PLANNER' : 'BUFFER'}, refCtx=${!!this.referenceCtx}, cache=${this.colorCache?.size ?? 0}, refBounds=${!!this.referenceWorldBounds}, targetArea=${targetArea.toFixed(0)}, distFn=${this.config.colorDistanceFn}, colorSrc=${this.config.colorSource}`);
+
     if (useFullPlanner) {
       // --- Photomosaic planner path ---
       // Seed first tile using square approximation
@@ -256,7 +261,8 @@ export class MosaicPattern implements Pattern {
         referenceWorldBounds: this.referenceWorldBounds!,
         targetArea,
         tileMargin: margin,
-        colorMatchStrategy: this.config.colorMatchStrategy,
+        colorDistanceFn: this.config.colorDistanceFn,
+        colorSource: this.config.colorSource,
         maxTiles: this.config.maxTiles > 0 ? this.config.maxTiles : 10000,
       });
 
@@ -279,7 +285,8 @@ export class MosaicPattern implements Pattern {
       this.imageBuffer.init(this.imageUrls, this.viewportWidth, this.viewportHeight, {
         tileAreaPercent: this.config.tileAreaPercent,
         bufferSize: this.config.bufferSize,
-        colorMatchStrategy: this.config.colorMatchStrategy,
+        colorDistanceFn: this.config.colorDistanceFn,
+        colorSource: this.config.colorSource,
       }, this.colorCache as Map<string, { avgColor: RGB; domColor: RGB }> ?? undefined);
 
       await this.imageBuffer.prefill();
@@ -429,11 +436,6 @@ export class MosaicPattern implements Pattern {
     if (this.config.zoomEnabled) {
       this.updateZoom();
     }
-
-    if (this.config.zoomEnabled && this.currentScale <= this.config.maxZoomOut) {
-      this.stopFilling();
-      return;
-    }
   }
 
   private renderTile(
@@ -474,7 +476,11 @@ export class MosaicPattern implements Pattern {
     const scaleX = this.viewportWidth / worldW;
     const scaleY = this.viewportHeight / worldH;
     let targetScale = Math.min(scaleX, scaleY, 1.0);
-    targetScale = Math.max(targetScale, this.config.maxZoomOut);
+    // In planner mode, zoom as far as needed to show all tiles.
+    // In buffer mode, clamp to maxZoomOut.
+    if (!this.stats.plannerMode) {
+      targetScale = Math.max(targetScale, this.config.maxZoomOut);
+    }
 
     this.currentScale = targetScale;
 
@@ -498,6 +504,8 @@ export class MosaicPattern implements Pattern {
       window.clearInterval(this.placementTimer);
       this.placementTimer = null;
     }
+
+    console.log(`[Mosaic] stopFilling: placed=${this.tilesPlaced}, plannedRemaining=${this.plannedTiles.length}, scale=${this.currentScale.toFixed(4)}, tileScreenPx=${this.stats.tileScreenPx.toFixed(1)}, state=${this.stats.state}`);
 
     this.stats.state = 'hold';
 
@@ -554,7 +562,7 @@ export class MosaicPattern implements Pattern {
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d')!;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
         ctx.drawImage(img, 0, 0);
         this.referenceCtx = ctx;
         this.referenceWidth = canvas.width;

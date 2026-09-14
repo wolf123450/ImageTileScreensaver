@@ -48,8 +48,9 @@ export function hsvDistance(a: RGB, b: RGB): number {
   const hNorm = dh / 180;
   const ds = as - bs;
   const dv = av - bv;
-  // Weight hue most heavily, then saturation, then value
-  return Math.sqrt(4 * hNorm * hNorm + 2 * ds * ds + dv * dv);
+  // Weight value most heavily, then saturation, then hue.
+  // Brightness is the most perceptually dominant factor at small tile sizes.
+  return Math.sqrt(hNorm * hNorm + 2 * ds * ds + 4 * dv * dv);
 }
 
 /**

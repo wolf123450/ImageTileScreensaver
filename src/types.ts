@@ -43,7 +43,8 @@ export interface PatternOptions {
     bufferSize?: number;
     referenceImage?: string;
     referenceImageDir?: string;
-    colorMatchStrategy?: 'average' | 'dominant' | 'hsv';
+    colorDistanceFn?: 'rgb' | 'hsv';
+    colorSource?: 'average' | 'dominant';
     referenceTileCount?: number;
 }
 

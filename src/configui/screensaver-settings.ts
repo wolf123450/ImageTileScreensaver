@@ -32,7 +32,6 @@ let patternOptions: NodeListOf<Element>;
 let multiMonitorSyncCheckbox: HTMLInputElement;
 let transitionEffectSelect: HTMLSelectElement;
 let transitionDurationInput: HTMLInputElement;
-let applyButton: HTMLButtonElement;
 let saveButton: HTMLButtonElement;
 let cancelButton: HTMLButtonElement;
 let doneButton: HTMLButtonElement; // Add done button reference
@@ -90,7 +89,6 @@ function initElements(): void {
     transitionEffectSelect = document.getElementById('transition-effect') as HTMLSelectElement;
     transitionDurationInput = document.getElementById('transition-duration') as HTMLInputElement;
     
-    applyButton = document.getElementById('apply-button') as HTMLButtonElement;
     saveButton = document.getElementById('save-button') as HTMLButtonElement;
     cancelButton = document.getElementById('cancel-button') as HTMLButtonElement;
     doneButton = document.getElementById('done-button') as HTMLButtonElement; // Initialize done button
@@ -149,7 +147,6 @@ function setupEventListeners(): void {
     });
     
     // Button actions
-    applyButton.addEventListener('click', applyChanges);
     saveButton.addEventListener('click', saveChanges);
     cancelButton.addEventListener('click', closeWindow);
     doneButton.addEventListener('click', saveAndClose); // Add done button event listener
@@ -534,7 +531,8 @@ function loadPatternOptions(pattern: string): void {
             const maxZoomPct = (100 / Math.pow(2, maxZoomStep));
             const photomosaicEnabled = !!(opts.referenceImage || opts.referenceImageDir);
             const refSource = opts.referenceImage ? 'single' : opts.referenceImageDir ? 'directory' : 'random';
-            const colorMatch = opts.colorMatchStrategy ?? 'average';
+            const colorDistFn = opts.colorDistanceFn ?? 'rgb';
+            const colorSrc = opts.colorSource ?? 'dominant';
             const refTileCount = opts.referenceTileCount ?? 250;
 
             patternOptionsContainer.innerHTML = `
@@ -645,11 +643,17 @@ function loadPatternOptions(pattern: string): void {
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="mosaic-color-match">Color Match:</label>
-                                <select id="mosaic-color-match">
-                                    <option value="average" ${colorMatch === 'average' ? 'selected' : ''}>Average Color</option>
-                                    <option value="dominant" ${colorMatch === 'dominant' ? 'selected' : ''}>Dominant Color</option>
-                                    <option value="hsv" ${colorMatch === 'hsv' ? 'selected' : ''}>HSV Distance</option>
+                                <label for="mosaic-color-distance">Color Distance:</label>
+                                <select id="mosaic-color-distance">
+                                    <option value="rgb" ${colorDistFn === 'rgb' ? 'selected' : ''}>RGB (Weighted Euclidean)</option>
+                                    <option value="hsv" ${colorDistFn === 'hsv' ? 'selected' : ''}>HSV (Value-weighted)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="mosaic-color-source">Color Source:</label>
+                                <select id="mosaic-color-source">
+                                    <option value="dominant" ${colorSrc === 'dominant' ? 'selected' : ''}>Dominant Color</option>
+                                    <option value="average" ${colorSrc === 'average' ? 'selected' : ''}>Average Color</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -851,7 +855,8 @@ function getPatternOptionsFromUI(): PatternOptions {
             const refSource = document.querySelector('input[name="mosaic-reference-source"]:checked') as HTMLInputElement | null;
             const refImage = document.getElementById('mosaic-reference-image') as HTMLInputElement | null;
             const refDir = document.getElementById('mosaic-reference-dir') as HTMLInputElement | null;
-            const colorMatch = document.getElementById('mosaic-color-match') as HTMLSelectElement | null;
+            const colorDistFn = document.getElementById('mosaic-color-distance') as HTMLSelectElement | null;
+            const colorSrc = document.getElementById('mosaic-color-source') as HTMLSelectElement | null;
             const refTileCount = document.getElementById('mosaic-ref-tile-count') as HTMLInputElement | null;
 
             const result: PatternOptions = {
@@ -865,7 +870,8 @@ function getPatternOptionsFromUI(): PatternOptions {
                 holdDuration: (Number(holdDuration?.value) || 5) * 1000,
                 zoomEnabled: zoomEnabled?.checked ?? true,
                 maxZoomOut: 1 / Math.pow(2, Number(maxZoomOut?.value) || 0),
-                colorMatchStrategy: (colorMatch?.value as 'average' | 'dominant' | 'hsv') || 'average',
+                colorDistanceFn: (colorDistFn?.value as 'rgb' | 'hsv') || 'rgb',
+                colorSource: (colorSrc?.value as 'average' | 'dominant') || 'dominant',
                 referenceTileCount: Number(refTileCount?.value) || 250,
             };
 
@@ -920,22 +926,7 @@ function getConfigFromUI(): ScreensaverConfig {
     };
 }
 
-// Apply changes but don't save or close
-async function applyChanges(): Promise<void> {
-    const newConfig = getConfigFromUI();
-    
-    try {
-        await window.electronAPI.applyConfig(newConfig);
-        config = { ...newConfig };
-        
-        showSuccessMessage('Settings applied successfully');
-    } catch (error) {
-        console.error('Error applying configuration:', error);
-        showErrorMessage('Failed to apply settings');
-    }
-}
-
-// Save changes and close window
+// Save changes
 async function saveChanges(): Promise<void> {
     const newConfig = getConfigFromUI();
     

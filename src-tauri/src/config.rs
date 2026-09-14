@@ -44,7 +44,8 @@ pub struct PatternOptions {
     pub buffer_size: Option<u32>,
     pub reference_image: Option<String>,
     pub reference_image_dir: Option<String>,
-    pub color_match_strategy: Option<String>,
+    pub color_distance_fn: Option<String>,
+    pub color_source: Option<String>,
     pub reference_tile_count: Option<u32>,
 }
 
@@ -210,7 +211,8 @@ mod tests {
                 buffer_size: None,
                 reference_image: None,
                 reference_image_dir: None,
-                color_match_strategy: None,
+                color_distance_fn: None,
+                color_source: None,
                 reference_tile_count: None,
             },
             multi_monitor_sync: true,
