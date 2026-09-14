@@ -28,7 +28,7 @@ A customizable Windows screensaver built with Tauri v2 and TypeScript that displ
 1. Clone the repository
 
    ```bash
-   git clone https://github.com/yourusername/ImageTileScreensaver.git
+   git clone https://github.com/wolf123450/ImageTileScreensaver.git
    cd ImageTileScreensaver
    ```
 

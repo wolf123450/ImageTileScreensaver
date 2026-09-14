@@ -15,10 +15,15 @@
     "test:e2e:headed": "npm run build && playwright test --headed",
     "tauri:dev": "cargo tauri dev",
     "tauri:dev:config": "cargo tauri dev -- -- /c",
-    "tauri:build": "cargo tauri build"
+    "tauri:build": "cargo tauri build",
+    "version": "node scripts/sync-cargo-version.js && git add src-tauri/Cargo.toml"
   },
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wolf123450/ImageTileScreensaver.git"
+  },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0"

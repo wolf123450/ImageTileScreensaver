@@ -2,9 +2,9 @@
 name = "image-tile-screensaver"
 version = "0.1.0"
 description = "A screensaver that tiles images across multiple displays"
-authors = ["you"]
+authors = ["Clint Day"]
 license = "MIT"
-repository = ""
+repository = "https://github.com/wolf123450/ImageTileScreensaver"
 edition = "2021"
 rust-version = "1.77.2"
 
